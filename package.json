@@ -1,19 +1,26 @@
 {
-  "name": "configurable-appointment-messaging",
-  "version": "1.0.0",
+  "name": "oshc-whatsapp-catalogue",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=20" },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "migrate": "node scripts/migrate.js"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@kapso/whatsapp-cloud-api": "latest",
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "vitest": "latest"
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "vitest": "4.1.10"
   }
 }
