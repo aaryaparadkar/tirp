@@ -19,6 +19,10 @@ services:
         sync: false
       - key: OSHC_FLOW_ID
         sync: false
+      - key: QUIZ_REMINDER_TEMPLATE
+        sync: false
+      - key: QUIZ_REMINDER_TEMPLATE_LANGUAGE
+        value: en
       - key: DATABASE_SSL
         value: "true"
 

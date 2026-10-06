@@ -1,0 +1,217 @@
+{
+  "version": "7.3",
+  "dataApiVersion": "3.0",
+  "routingModel": {
+    "LESSON": [
+      "QUIZ"
+    ],
+    "QUIZ": []
+  },
+  "screens": [
+    {
+      "id": "LESSON",
+      "title": "Learning Session",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "OSHC Knowledge Hub"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Finding Healthcare in Australia"
+          },
+          {
+            "type": "TextBody",
+            "text": "For non-emergency illnesses, a General Practitioner (GP) is usually your primary healthcare contact in Australia. Always ask about fees before booking; insurer direct-billing clinics can reduce or eliminate upfront costs. GPs also issue required referral letters for specialist appointments. For life-threatening emergencies, call 000."
+          },
+          {
+            "type": "Footer",
+            "label": "Begin Quiz",
+            "onClickAction": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUIZ"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUIZ",
+      "title": "Session Quiz",
+      "terminal": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Test Your Knowledge"
+          },
+          {
+            "type": "TextBody",
+            "text": "Select the best answer for each question below to earn XP:"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q1",
+            "label": "Question 1: You have had a persistent sore throat, mild fever, and tiredness for four days. You want medical advice, but it is not an emergency. What is generally the most appropriate first step?",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "A. Go directly to a major hospital emergency depar...",
+                "description": "Go directly to a major hospital emergency department"
+              },
+              {
+                "id": "b",
+                "title": "B. Book an appointment with a General Practitioner...",
+                "description": "Book an appointment with a General Practitioner (GP)"
+              },
+              {
+                "id": "c",
+                "title": "C. Wait for symptoms to disappear before starting ...",
+                "description": "Wait for symptoms to disappear before starting classes"
+              },
+              {
+                "id": "d",
+                "title": "D. Call emergency services (000) for ambulance tra...",
+                "description": "Call emergency services (000) for ambulance transport"
+              }
+            ]
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q2",
+            "label": "Question 2: You want to consult a specialist doctor, such as a dermatologist for an ongoing skin rash. Under the Australian healthcare system, what must you do first to ensure OSHC benefit eligibility?",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "A. Turn up at a private specialist clinic without ...",
+                "description": "Turn up at a private specialist clinic without an appointment"
+              },
+              {
+                "id": "b",
+                "title": "B. Consult a GP first to obtain an official referr...",
+                "description": "Consult a GP first to obtain an official referral letter"
+              },
+              {
+                "id": "c",
+                "title": "C. Apply directly to Medicare for special overseas...",
+                "description": "Apply directly to Medicare for special overseas approval"
+              },
+              {
+                "id": "d",
+                "title": "D. Request permission from the Department of Home ...",
+                "description": "Request permission from the Department of Home Affairs"
+              }
+            ]
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q3",
+            "label": "Question 3: You are booking a routine doctor consultation and want to minimize upfront fees and claim paperwork. What type of medical clinic should you look for?",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "A. A medical practice in your OSHC insurer’s direc...",
+                "description": "A medical practice in your OSHC insurer’s direct billing network"
+              },
+              {
+                "id": "b",
+                "title": "B. A boutique private surgical hospital offering e...",
+                "description": "A boutique private surgical hospital offering elective procedures"
+              },
+              {
+                "id": "c",
+                "title": "C. A public hospital emergency department during n...",
+                "description": "A public hospital emergency department during normal clinic hours"
+              },
+              {
+                "id": "d",
+                "title": "D. An unregistered community wellness clinic outsi...",
+                "description": "An unregistered community wellness clinic outside the health system"
+              }
+            ]
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q4",
+            "label": "Question 4: You feel unwell in your student apartment late at night and need a medical certificate and advice before missing class tomorrow. Which digital service is available through your OSHC app?",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "A. Online Doctor consultations for 24/7 video or p...",
+                "description": "Online Doctor consultations for 24/7 video or phone appointments"
+              },
+              {
+                "id": "b",
+                "title": "B. Automatic emergency prescription delivery throu...",
+                "description": "Automatic emergency prescription delivery through state hospitals"
+              },
+              {
+                "id": "c",
+                "title": "C. An online tool that lets students self-issue me...",
+                "description": "An online tool that lets students self-issue medical sick certificates"
+              },
+              {
+                "id": "d",
+                "title": "D. A government portal that reimburses taxi travel...",
+                "description": "A government portal that reimburses taxi travel to hospital clinics"
+              }
+            ]
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q5",
+            "label": "Question 5: You have just moved to a new suburb for university and want to locate a general doctor close to your accommodation. Where can you reliably search for registered healthcare practices?",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "A. The National Health Services Directory via Heal...",
+                "description": "The National Health Services Directory via Healthdirect or your OSHC provider"
+              },
+              {
+                "id": "b",
+                "title": "B. Random classified advertising flyers posted aro...",
+                "description": "Random classified advertising flyers posted around local street corners"
+              },
+              {
+                "id": "c",
+                "title": "C. International student social chat groups offeri...",
+                "description": "International student social chat groups offering unlicensed home visits"
+              },
+              {
+                "id": "d",
+                "title": "D. The Australian Border Force customs baggage ins...",
+                "description": "The Australian Border Force customs baggage inspection office"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Submit Answers",
+            "onClickAction": {
+              "name": "complete",
+              "payload": {
+                "q1": "${form.q1}",
+                "q2": "${form.q2}",
+                "q3": "${form.q3}",
+                "q4": "${form.q4}",
+                "q5": "${form.q5}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

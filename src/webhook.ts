@@ -4,6 +4,7 @@ import { catalogueReply, ensureContact, listCategories, listServices, sendCatalo
 import { FlowRegistry } from './flows.js';
 import { id, json, now, verifyHmac } from './lib.js';
 import type { FlowResponse } from './types.js';
+import { answerQuiz, handleQuizText } from './quiz/service.js';
 
 interface KapsoMessage {
   id?: string;
@@ -40,6 +41,8 @@ function messageText(message: KapsoMessage): string {
 
 async function handleText(db: Database, contact: Awaited<ReturnType<typeof ensureContact>>, text: string): Promise<void> {
   const normalized = text.toLowerCase();
+  if (await handleQuizText(db, contact, text)) return;
+  if (await answerQuiz(db, contact, text)) return;
   const categories = await listCategories(db);
   if (/^(hi|hello|hey|start|menu|catalogue|services?)$/.test(normalized)) {
     const body = normalized === 'service' || normalized === 'services' ? servicesReply(await listServices(db)) : catalogueReply(categories);
