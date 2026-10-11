@@ -4,14 +4,61 @@ import { catalogueConfig } from './config.js';
 import { id, now } from './lib.js';
 import type { CatalogueCategory, CatalogueService, Contact } from './types.js';
 
+type ContactRow = { id: string; phone: string; name: string; locale: string; preferred_language?: string | null; opted_in: boolean };
+
+function toContact(row: ContactRow): Contact {
+  return {
+    id: row.id,
+    phone: row.phone,
+    name: row.name,
+    locale: row.locale,
+    preferredLanguage: (row.preferred_language as Contact['preferredLanguage']) || null,
+    optedIn: row.opted_in,
+  };
+}
+
 export async function ensureContact(db: Database, phone: string, name = 'WhatsApp user'): Promise<Contact> {
-  const existing = await db.query<{ id: string; phone: string; name: string; locale: string; opted_in: boolean }>('SELECT id, phone, name, locale, opted_in FROM contacts WHERE phone = $1', [phone]);
-  if (existing.rows[0]) return { ...existing.rows[0], optedIn: existing.rows[0].opted_in };
-  const result = await db.query<{ id: string; phone: string; name: string; locale: string; opted_in: boolean }>(
-    'INSERT INTO contacts (id, phone, name, locale, opted_in, created_at, updated_at) VALUES ($1, $2, $3, $4, true, $5, $5) RETURNING id, phone, name, locale, opted_in',
-    [id(), phone, name, 'en_US', now()],
-  );
-  return { ...result.rows[0], optedIn: result.rows[0].opted_in };
+  const existing = await db.query<ContactRow>('SELECT id, phone, name, locale, preferred_language, opted_in FROM contacts WHERE phone = $1', [phone]).catch(async () => {
+    // Fallback for DBs where the multilingual migration has not run yet.
+    const legacy = await db.query<Omit<ContactRow, 'preferred_language'>>('SELECT id, phone, name, locale, opted_in FROM contacts WHERE phone = $1', [phone]);
+    return { ...legacy, rows: legacy.rows.map((r) => ({ ...r, preferred_language: null })) };
+  });
+  if (existing.rows[0]) return toContact(existing.rows[0]);
+  try {
+    const result = await db.query<ContactRow>(
+      'INSERT INTO contacts (id, phone, name, locale, preferred_language, opted_in, created_at, updated_at) VALUES ($1, $2, $3, $4, NULL, true, $5, $5) RETURNING id, phone, name, locale, preferred_language, opted_in',
+      [id(), phone, name, 'en_US', now()],
+    );
+    return toContact(result.rows[0]);
+  } catch {
+    const result = await db.query<ContactRow>(
+      'INSERT INTO contacts (id, phone, name, locale, opted_in, created_at, updated_at) VALUES ($1, $2, $3, $4, true, $5, $5) RETURNING id, phone, name, locale, opted_in',
+      [id(), phone, name, 'en_US', now()],
+    );
+    return toContact({ ...result.rows[0], preferred_language: null });
+  }
+}
+
+/** Atomically lock the first-detected language; concurrent first messages cannot overwrite each other. */
+export async function lockPreferredLanguage(
+  db: Database,
+  contactId: string,
+  language: 'en' | 'zh-CN' | 'es',
+): Promise<'en' | 'zh-CN' | 'es'> {
+  try {
+    const res = await db.query<{ preferred_language: string }>(
+      `UPDATE contacts SET preferred_language = $1, language_detected_at = now(), updated_at = now()
+       WHERE id = $2 AND preferred_language IS NULL RETURNING preferred_language`,
+      [language, contactId],
+    );
+    if (res.rows[0]?.preferred_language) return res.rows[0].preferred_language as 'en' | 'zh-CN' | 'es';
+    const current = await db.query<ContactRow>('SELECT preferred_language FROM contacts WHERE id = $1', [contactId]).catch(() => ({ rows: [] as ContactRow[] }));
+    const existing = (current as { rows: ContactRow[] }).rows[0]?.preferred_language;
+    if (existing === 'en' || existing === 'zh-CN' || existing === 'es') return existing;
+    return language;
+  } catch {
+    return language;
+  }
 }
 
 export async function listCategories(db: Database): Promise<CatalogueCategory[]> {

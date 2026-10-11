@@ -14,11 +14,14 @@ export interface CatalogueService {
   actionLabel?: string;
 }
 
+export type SupportedLanguage = 'en' | 'zh-CN' | 'es';
+
 export interface Contact {
   id: string;
   phone: string;
   name: string;
   locale: string;
+  preferredLanguage?: SupportedLanguage | null;
   optedIn: boolean;
 }
 
@@ -85,6 +88,7 @@ export interface ConversationTurn {
 export interface AssistantAnswer {
   text: string;
   intent: Intent;
+  language: SupportedLanguage;
   sourceIds: string[];
   sourceUrls: string[];
   usedLlm: boolean;

@@ -98,7 +98,28 @@ Emergency acceptance: reply says “Stay calm”, shows `000`, and the Call butt
 blocks `000` as a call target, the `tel:000` text fallback still satisfies the
 requirement — record which behavior the sandbox shows.
 
-## 6. Logs to watch
+## 6. Multilingual checklist (en / zh-CN / es)
+
+Run `npm run migrate` first so `contacts.preferred_language` and
+`conversation_messages.language` exist. Use three separate sandbox sender numbers,
+one per language, so language locking can be verified independently.
+
+- `Hi` → English greeting, 9 options.
+- `Hola` → Spanish greeting (`Hola, soy el asistente...`), 9 Spanish options.
+- `你好` → Mandarin greeting, 9 Chinese options.
+- From the Spanish number, send `¿Cómo hago un reclamo?` → Spanish claims answer.
+  Then send `How do I claim?` from the same number → answer must still be Spanish
+  (language is locked, not re-detected).
+- From the Mandarin number, send `处方药可以报销吗？` → Chinese pharmacy answer.
+- `我出事故了` → Mandarin emergency (`请保持冷静`, contains `000`, no LLM call).
+- `Tuve un accidente grave` → Spanish emergency (`Mantén la calma`, contains `000`).
+- `我有点感冒怎么办？` → NOT emergency; Chinese GP/pharmacy guidance.
+- With `MISTRAL_API_KEYS` unset, Mandarin/Spanish questions must get a localized
+  limitation response with official links — never raw English KB excerpts.
+- Check DB: `contacts.preferred_language` is `en` / `es` / `zh-CN` per sender, and
+  every `conversation_messages` row carries the same `language`.
+
+## 7. Logs to watch
 
 - `conversation save failed` → DB issue (replies still send).
 - `Mistral HTTP 429/401` → key rotation working; check that next key succeeds.
