@@ -38,30 +38,56 @@ export async function saveTurn(
     llmKeySlot?: number;
     latencyMs?: number;
     errorCode?: string;
+    language?: string;
   } = {},
 ): Promise<void> {
   try {
     await ensureConversationTable(db);
-    await db.query(
-      `INSERT INTO conversation_messages
-        (id, contact_id, wa_message_id, direction, message_type, body, intent, source_ids, llm_model, llm_key_slot, latency_ms, error_code, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        id(),
-        contactId,
-        opts.waMessageId || null,
-        direction,
-        opts.messageType || 'text',
-        (body || '').slice(0, 4000),
-        opts.intent || null,
-        JSON.stringify(opts.sourceIds || []),
-        opts.llmModel || null,
-        typeof opts.llmKeySlot === 'number' ? opts.llmKeySlot : null,
-        typeof opts.latencyMs === 'number' ? opts.latencyMs : null,
-        opts.errorCode || null,
-        now(),
-      ],
-    );
+    try {
+      await db.query(
+        `INSERT INTO conversation_messages
+          (id, contact_id, wa_message_id, direction, message_type, body, intent, source_ids, llm_model, llm_key_slot, latency_ms, error_code, language, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [
+          id(),
+          contactId,
+          opts.waMessageId || null,
+          direction,
+          opts.messageType || 'text',
+          (body || '').slice(0, 4000),
+          opts.intent || null,
+          JSON.stringify(opts.sourceIds || []),
+          opts.llmModel || null,
+          typeof opts.llmKeySlot === 'number' ? opts.llmKeySlot : null,
+          typeof opts.latencyMs === 'number' ? opts.latencyMs : null,
+          opts.errorCode || null,
+          opts.language || null,
+          now(),
+        ],
+      );
+    } catch {
+      // Fallback for DBs without the language column yet.
+      await db.query(
+        `INSERT INTO conversation_messages
+          (id, contact_id, wa_message_id, direction, message_type, body, intent, source_ids, llm_model, llm_key_slot, latency_ms, error_code, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [
+          id(),
+          contactId,
+          opts.waMessageId || null,
+          direction,
+          opts.messageType || 'text',
+          (body || '').slice(0, 4000),
+          opts.intent || null,
+          JSON.stringify(opts.sourceIds || []),
+          opts.llmModel || null,
+          typeof opts.llmKeySlot === 'number' ? opts.llmKeySlot : null,
+          typeof opts.latencyMs === 'number' ? opts.latencyMs : null,
+          opts.errorCode || null,
+          now(),
+        ],
+      );
+    }
   } catch (error) {
     // Conversation logging must never break replies.
     console.error('conversation save failed', error);

@@ -1,12 +1,14 @@
 import type { Database } from './db.js';
-import { EMERGENCY_NUMBER_AU, assistantConfig, catalogueConfig } from './config.js';
-import { catalogueReply, ensureContact, listCategories, listServices, sendCatalogueFlow, servicesReply } from './catalogue.js';
+import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
+import { catalogueReply, ensureContact, listCategories, listServices, lockPreferredLanguage, sendCatalogueFlow, servicesReply } from './catalogue.js';
+import { getMenuOptions, t } from './i18n.js';
 import { recentTurns, saveTurn } from './conversation.js';
 import { FlowRegistry } from './flows.js';
+import { detectLanguage } from './language.js';
 import { id, json, now, verifyHmac } from './lib.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
-import { emergencyReply, isEmergency, isGreeting } from './safety.js';
-import type { FlowResponse } from './types.js';
+import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
+import type { Contact, FlowResponse, SupportedLanguage } from './types.js';
 
 interface KapsoMessage {
   id?: string;
@@ -49,13 +51,34 @@ export function messageText(message: KapsoMessage): string {
   return (message.text?.body || '').trim();
 }
 
-async function sendGreeting(phoneNumberId: string, to: string): Promise<void> {
+function isLanguageNeutralSelection(text: string): boolean {
+  return /^(\d|menu:.*)$/.test(text.trim().toLowerCase());
+}
+
+export async function resolveContactLanguage(
+  db: Database,
+  contact: Contact,
+  text: string,
+): Promise<SupportedLanguage> {
+  if (contact.preferredLanguage === 'en' || contact.preferredLanguage === 'zh-CN' || contact.preferredLanguage === 'es') {
+    return contact.preferredLanguage;
+  }
+  // Language-neutral menu taps/numbers carry no signal — don't lock on them.
+  if (!text.trim() || isLanguageNeutralSelection(text)) return 'en';
+  const detected = detectLanguage(text).language;
+  const locked = await lockPreferredLanguage(db, contact.id, detected);
+  contact.preferredLanguage = locked;
+  return locked;
+}
+
+async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
   const kapso = await import('./kapso.js');
+  const options = getMenuOptions(lang);
   const sections = [
     {
-      title: 'OSHC help',
-      rows: MENU_OPTIONS.slice(0, 8).map((o) => ({
-        id: `menu:${o.label.toLowerCase().split(' ')[0] === 'understand' ? 'coverage' : menuIdFor(o.intent)}`,
+      title: 'OSHC',
+      rows: options.slice(0, 8).map((o) => ({
+        id: `menu:${menuIdFor(o.intent)}`,
         title: o.label.slice(0, 24),
         description: o.description.slice(0, 72),
       })),
@@ -66,22 +89,23 @@ async function sendGreeting(phoneNumberId: string, to: string): Promise<void> {
     await kapso.sendList(
       phoneNumberId,
       to,
-      assistantConfig.greeting,
-      'Choose topic',
+      t(lang, 'greeting'),
+      t(lang, 'chooseTopic'),
       sections,
-      'Medibank OSHC • general info only',
+      t(lang, 'menuFooter'),
     );
     return;
   } catch { /* fall through */ }
   try {
-    await kapso.sendButtons(phoneNumberId, to, assistantConfig.greeting.slice(0, 900), [
-      { id: 'menu:coverage', title: 'My cover' },
-      { id: 'menu:claims', title: 'Claims' },
-      { id: 'menu:emergency', title: 'Urgent help' },
-    ], 'Reply MENU anytime');
+    const quick = options.filter((o) => ['coverage', 'claims', 'emergency'].includes(o.intent));
+    await kapso.sendButtons(phoneNumberId, to, t(lang, 'greeting').slice(0, 900), [
+      { id: 'menu:coverage', title: quick[0]?.label.slice(0, 20) || 'Cover' },
+      { id: 'menu:claims', title: quick[1]?.label.slice(0, 20) || 'Claims' },
+      { id: 'menu:emergency', title: quick[2]?.label.slice(0, 20) || 'Urgent' },
+    ], t(lang, 'replyMenuHint'));
     return;
   } catch { /* fall through */ }
-  await kapso.sendText(phoneNumberId, to, assistantConfig.greeting);
+  await kapso.sendText(phoneNumberId, to, t(lang, 'greeting'));
 }
 
 function menuIdFor(intent: string): string {
@@ -104,13 +128,13 @@ function menuIdFor(intent: string): string {
   return map[intent] || 'support';
 }
 
-async function sendEmergency(phoneNumberId: string, to: string): Promise<void> {
+async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
   const kapso = await import('./kapso.js');
-  const body = emergencyReply();
+  const body = emergencyReply(lang);
   // Always send the text first so the number is visible even if interactive fails.
   await kapso.sendText(phoneNumberId, to, body);
   try {
-    await kapso.sendEmergencyNumber(phoneNumberId, to, `Tap to call ${EMERGENCY_NUMBER_AU} (Australia emergency) now. Stay on the line.`);
+    await kapso.sendEmergencyNumber(phoneNumberId, to, emergencyCallText(lang));
   } catch {
     await kapso.sendText(phoneNumberId, to, `Call now: tel:${EMERGENCY_NUMBER_AU} — dial ${EMERGENCY_NUMBER_AU} on your phone.`).catch(() => {});
   }
@@ -133,6 +157,10 @@ async function sendAnswer(phoneNumberId: string, to: string, text: string): Prom
   }
 }
 
+function isSupportKeyword(text: string): boolean {
+  return /^(support|soporte|ayuda|客服|帮助|supporto)$/i.test(text.trim());
+}
+
 async function handleText(
   db: Database,
   contact: Awaited<ReturnType<typeof ensureContact>>,
@@ -141,55 +169,55 @@ async function handleText(
 ): Promise<void> {
   const phoneId = catalogueConfig.phoneNumberId;
   const text = (rawText || '').trim();
+  const lang = await resolveContactLanguage(db, contact, text);
   if (!text) {
-    await sendAnswer(phoneId, contact.phone, 'I got an empty message. Reply MENU to see what I can help with.');
+    await sendAnswer(phoneId, contact.phone, t(lang, 'emptyMessage'));
     return;
   }
-  await saveTurn(db, contact.id, 'inbound', text, { waMessageId });
+  await saveTurn(db, contact.id, 'inbound', text, { waMessageId, language: lang });
 
-  // 1) Emergency always wins — no LLM.
+  // 1) Emergency always wins — no LLM. Detection runs AFTER language lock so the
+  // reply (including a first-message emergency) uses the user's language.
   if (isEmergency(text) || resolveMenuSelection(text) === 'emergency') {
-    await sendEmergency(phoneId, contact.phone);
-    await saveTurn(db, contact.id, 'outbound', emergencyReply(), { intent: 'emergency' });
+    await sendEmergency(phoneId, contact.phone, lang);
+    await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
     return;
   }
 
   // 2) Greeting / menu.
   if (isGreeting(text)) {
-    // Keep old catalogue working: if user typed a catalogue number/name previously,
-    // new greeting still shows; catalogue fallback happens below for unknown intents.
-    await sendGreeting(phoneId, contact.phone);
-    await saveTurn(db, contact.id, 'outbound', assistantConfig.greeting, { intent: 'greeting' });
+    await sendGreeting(phoneId, contact.phone, lang);
+    await saveTurn(db, contact.id, 'outbound', t(lang, 'greeting'), { intent: 'greeting', language: lang });
     return;
   }
 
   // 3) Direct menu selection (numbers, button ids).
   const menuIntent = resolveMenuSelection(text);
-  if (menuIntent && /^(\d|menu:.*)$/.test(text.trim().toLowerCase())) {
+  if (menuIntent && isLanguageNeutralSelection(text)) {
     if (menuIntent === 'emergency') {
-      await sendEmergency(phoneId, contact.phone);
-      await saveTurn(db, contact.id, 'outbound', emergencyReply(), { intent: 'emergency' });
+      await sendEmergency(phoneId, contact.phone, lang);
+      await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
       return;
     }
-    const direct = staticAnswerFor(menuIntent, text);
+    const direct = staticAnswerFor(menuIntent, text, lang);
     if (direct) {
       await sendAnswer(phoneId, contact.phone, direct.text);
-      await saveTurn(db, contact.id, 'outbound', direct.text, { intent: menuIntent, sourceIds: direct.sourceIds });
+      await saveTurn(db, contact.id, 'outbound', direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, language: lang });
       return;
     }
     // Otherwise fall through to retrieval with the menu intent.
     const history = await recentTurns(db, contact.id);
-    const ans = await answerWithSources(text, { intent: menuIntent, confidence: 1, needsClarification: false, keywords: [], source: 'deterministic' }, { history });
+    const ans = await answerWithSources(text, { intent: menuIntent, confidence: 1, needsClarification: false, keywords: [], source: 'deterministic' }, { history, language: lang });
     await sendAnswer(phoneId, contact.phone, ans.text);
-    await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, llmModel: ans.model });
+    await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, llmModel: ans.model, language: lang });
     return;
   }
 
-  // 4) SUPPORT keyword fast-path (keep old behaviour: "Reply SUPPORT").
-  if (/^support$/i.test(text.trim())) {
-    const s = staticAnswerFor('support', text)!;
+  // 4) SUPPORT keyword fast-path (multilingual).
+  if (isSupportKeyword(text)) {
+    const s = staticAnswerFor('support', text, lang)!;
     await sendAnswer(phoneId, contact.phone, s.text);
-    await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds });
+    await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds, language: lang });
     return;
   }
 
@@ -197,22 +225,23 @@ async function handleText(
   const started = Date.now();
   const classification = await classifyIntent(text);
   if (classification.intent === 'emergency') {
-    await sendEmergency(phoneId, contact.phone);
-    await saveTurn(db, contact.id, 'outbound', emergencyReply(), { intent: 'emergency' });
+    await sendEmergency(phoneId, contact.phone, lang);
+    await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
     return;
   }
   const history = await recentTurns(db, contact.id);
-  const ans = await answerWithSources(text, classification, { history });
+  const ans = await answerWithSources(text, classification, { history, language: lang });
   await sendAnswer(phoneId, contact.phone, ans.text);
   await saveTurn(db, contact.id, 'outbound', ans.text, {
     intent: ans.intent,
     sourceIds: ans.sourceIds,
     llmModel: ans.model,
     latencyMs: Date.now() - started,
+    language: lang,
   });
 
-  // 6) Legacy catalogue fallback: if we had no sources and no LLM, try old exact matching.
-  if (!ans.usedLlm && !ans.sourceIds.length && ans.intent === 'unknown') {
+  // 6) Legacy catalogue fallback (English only, to avoid dumping English KB on other languages).
+  if (lang === 'en' && !ans.usedLlm && !ans.sourceIds.length && ans.intent === 'unknown') {
     try {
       const normalized = text.toLowerCase();
       const categories = await listCategories(db);
@@ -231,6 +260,7 @@ async function handleText(
 
 // Keep old catalogue greeting helper exported for tests/back-compat.
 export { catalogueReply };
+export { MENU_OPTIONS };
 
 export async function handleWebhook(request: Request, db: Database, registry: FlowRegistry): Promise<Response> {
   const raw = Buffer.from(await request.arrayBuffer());
