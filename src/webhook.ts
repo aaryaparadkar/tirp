@@ -1,15 +1,22 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Database } from './db.js';
+
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
+
 import { catalogueReply, ensureContact, listCategories, listServices, lockPreferredLanguage, sendCatalogueFlow, servicesReply } from './catalogue.js';
 import { getMenuOptions, getQuickMenuOptions, t } from './i18n.js';
 import { canonicalizeForMatch, normalizeInput, resolveCommandAlias } from './input-normalization.js';
 import { recentTurns, saveTurn } from './conversation.js';
+
 import { FlowRegistry } from './flows.js';
+
 import { detectLanguage } from './language.js';
 import { id, json, now, verifyHmac } from './lib.js';
 import { chunkForWhatsApp, formatWhatsAppAnswer } from './response-format.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
+
 import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
+
 import type { Contact, FlowResponse, SupportedLanguage } from './types.js';
 
 interface KapsoMessage {
@@ -23,12 +30,14 @@ interface KapsoMessage {
     nfm_reply?: { response_json?: string };
   };
   kapso?: { flow_response?: FlowResponse; flow_token?: string; flow_name?: string; contact_name?: string };
+
 }
 
 interface KapsoPayload {
   phone_number_id?: string;
   message?: KapsoMessage;
   conversation?: { contact_name?: string; kapso?: { contact_name?: string } };
+
 }
 
 export function flowResponseFrom(message: KapsoMessage): FlowResponse | null {
@@ -43,6 +52,7 @@ export function flowResponseFrom(message: KapsoMessage): FlowResponse | null {
       ...(typeof parsed.flow_name === 'string' ? { flowName: parsed.flow_name } : {}),
     };
   } catch { return null; }
+
 }
 
 export function messageText(message: KapsoMessage): string {
@@ -51,6 +61,7 @@ export function messageText(message: KapsoMessage): string {
   const list = message.interactive?.list_reply;
   if (list?.id || list?.title) return (list.id || list.title || '').trim();
   return (message.text?.body || '').trim();
+
 }
 
 function isLanguageNeutralSelection(text: string): boolean {
@@ -66,6 +77,7 @@ export async function resolveContactLanguage(
   db: Database,
   contact: Contact,
   text: string,
+
 ): Promise<SupportedLanguage> {
   if (contact.preferredLanguage === 'en' || contact.preferredLanguage === 'zh-CN' || contact.preferredLanguage === 'es') {
     return contact.preferredLanguage;
@@ -76,6 +88,7 @@ export async function resolveContactLanguage(
   const locked = await lockPreferredLanguage(db, contact.id, detected);
   contact.preferredLanguage = locked;
   return locked;
+
 }
 
 async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage, full = false): Promise<void> {
@@ -126,6 +139,7 @@ function menuIdFor(intent: string): string {
     emergency: 'emergency',
   };
   return map[intent] || 'support';
+
 }
 
 async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
@@ -138,6 +152,7 @@ async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedL
   } catch {
     await kapso.sendText(phoneNumberId, to, `Call now: tel:${EMERGENCY_NUMBER_AU} — dial ${EMERGENCY_NUMBER_AU} on your phone.`).catch(() => {});
   }
+
 }
 
 async function sendAnswer(phoneNumberId: string, to: string, text: string): Promise<void> {
@@ -147,6 +162,7 @@ async function sendAnswer(phoneNumberId: string, to: string, text: string): Prom
   for (const c of chunkForWhatsApp(formatted, 1500)) {
     if (c.trim()) await kapso.sendText(phoneNumberId, to, c);
   }
+
 }
 
 export function isSupportKeyword(text: string): boolean {
@@ -160,6 +176,7 @@ async function handleText(
   contact: Awaited<ReturnType<typeof ensureContact>>,
   rawText: string,
   waMessageId?: string,
+
 ): Promise<void> {
   const phoneId = catalogueConfig.phoneNumberId;
   const text = (rawText || '').trim();
@@ -169,7 +186,6 @@ async function handleText(
     return;
   }
   await saveTurn(db, contact.id, 'inbound', text, { waMessageId, language: lang });
-
   // 1) Emergency always wins — no LLM. Detection runs AFTER language lock so the
   // reply (including a first-message emergency) uses the user's language.
   if (isEmergency(text) || resolveMenuSelection(text) === 'emergency') {
@@ -185,7 +201,6 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', full ? t(lang, 'fullMenu') : t(lang, 'greeting'), { intent: 'greeting', language: lang });
     return;
   }
-
   // 3) Direct menu selection (numbers, button ids).
   const menuIntent = resolveMenuSelection(text);
   if (menuIntent && isLanguageNeutralSelection(text)) {
@@ -207,7 +222,6 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, llmModel: ans.model, language: lang });
     return;
   }
-
   // 4) SUPPORT keyword fast-path (multilingual).
   if (isSupportKeyword(text)) {
     const s = staticAnswerFor('support', text, lang)!;
@@ -215,7 +229,6 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds, language: lang });
     return;
   }
-
   // 5) LLM classification + grounded answer.
   const started = Date.now();
   const classification = await classifyIntent(text);
@@ -234,7 +247,6 @@ async function handleText(
     latencyMs: Date.now() - started,
     language: lang,
   });
-
   // 6) Legacy catalogue fallback (English only, to avoid dumping English KB on other languages).
   if (lang === 'en' && !ans.usedLlm && !ans.sourceIds.length && ans.intent === 'unknown') {
     try {
@@ -251,32 +263,99 @@ async function handleText(
       if (service) await sendCatalogueFlow(contact, service);
     } catch { /* best effort */ }
   }
+
 }
 
 // Keep old catalogue greeting helper exported for tests/back-compat.
+
 export { catalogueReply };
+
 export { MENU_OPTIONS };
+
+/**
+ * Kapso platform webhooks use a bare 64-character hex HMAC-SHA256 digest.
+ * Verify the ORIGINAL request bytes, before parsing JSON.
+ * Never use KAPSO_API_KEY or a Meta app secret as the webhook secret.
+ */
+function verifyKapsoSignature(body: Buffer, signature: string | null, secret: string): boolean {
+  if (!signature || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const expected = createHmac('sha256', secret).update(body).digest();
+  const received = Buffer.from(signature, 'hex');
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
 
 export async function handleWebhook(request: Request, db: Database, registry: FlowRegistry): Promise<Response> {
   const raw = Buffer.from(await request.arrayBuffer());
-  const skipSig = process.env.KAPSO_SKIP_SIGNATURE === 'true' || process.env.KAPSO_WEBHOOK_SECRET === 'sandbox';
-  if (!skipSig && !verifyHmac(raw, request.headers.get('x-webhook-signature'), process.env.KAPSO_WEBHOOK_SECRET)) {
+  const signature = request.headers.get('x-webhook-signature');
+  const secret = "794a740d2a8495e81ba7735e33fec80ca3cdcb624001075e29da7c95a69c91bb"
+  // Fail closed rather than accepting unsigned public webhooks.
+  if (!secret) {
+    console.error('[Kapso webhook] KAPSO_WEBHOOK_SECRET is not configured');
+    return json({ error: 'Webhook configuration unavailable' }, 503);
+  }
+  if (!verifyKapsoSignature(raw, signature, secret)) {
+    console.error('[Kapso webhook] Invalid signature', {
+      signaturePresent: Boolean(signature),
+      signatureFormatValid: Boolean(signature && /^[a-f0-9]{64}$/i.test(signature)),
+      payloadBytes: raw.length,
+    });
     return json({ error: 'Invalid signature' }, 401);
   }
   let payload: KapsoPayload;
-  try { payload = JSON.parse(raw.toString('utf8')) as KapsoPayload; } catch { return json({ error: 'Invalid JSON' }, 400); }
-  if (payload.phone_number_id && catalogueConfig.phoneNumberId && payload.phone_number_id !== catalogueConfig.phoneNumberId) return json({ ok: true });
+  try {
+    payload = JSON.parse(raw.toString('utf8')) as KapsoPayload;
+  } catch {
+    console.warn('[Kapso webhook] Malformed JSON');
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  console.info('[Kapso webhook] Signature verified', {
+    event: request.headers.get('x-webhook-event') ?? 'unknown',
+    payloadVersion: request.headers.get('x-webhook-payload-version') ?? 'unknown',
+    hasMessage: Boolean(payload.message),
+  });
+  if (payload.phone_number_id && catalogueConfig.phoneNumberId && payload.phone_number_id !== catalogueConfig.phoneNumberId) {
+    console.warn('[Kapso webhook] Ignoring event for a different phone_number_id');
+    return json({ ok: true });
+  }
   const message = payload.message;
-  if (!message?.id || !message.from) return json({ ok: true });
+  if (!message?.id || !message.from) {
+    console.info('[Kapso webhook] No processable message in payload');
+    return json({ ok: true });
+  }
   const eventId = `message:${message.id}`;
-  const inserted = await db.query('INSERT INTO webhook_events (id, event_key, payload, received_at) VALUES ($1, $2, $3, $4) ON CONFLICT (event_key) DO NOTHING', [id(), eventId, raw.toString('utf8'), now()]);
-  if (!inserted.rowCount) return json({ ok: true });
+  const inserted = await db.query(
+    'INSERT INTO webhook_events (id, event_key, payload, received_at) VALUES ($1, $2, $3, $4) ON CONFLICT (event_key) DO NOTHING',
+    [id(), eventId, raw.toString('utf8'), now()],
+  );
+  if (!inserted.rowCount) {
+    console.info('[Kapso webhook] Duplicate message ignored');
+    return json({ ok: true });
+  }
   const phone = `+${message.from.replace(/^\+/, '')}`;
   const contactName = message.kapso?.contact_name || payload.conversation?.kapso?.contact_name || payload.conversation?.contact_name || 'WhatsApp user';
-  const contact = await ensureContact(db, phone, contactName);
-  const flowResponse = flowResponseFrom(message);
-  if (flowResponse) await registry.dispatch({ ...flowResponse, flowName: flowResponse.flowName || message.kapso?.flow_name }, { phone, contactId: contact.id, flowToken: flowResponse.flowToken || message.kapso?.flow_token, data: flowResponse });
-  else await handleText(db, contact, messageText(message), message.id);
-  await db.query('UPDATE webhook_events SET processed_at = $1 WHERE event_key = $2', [now(), eventId]);
-  return json({ ok: true });
+  try {
+    const contact = await ensureContact(db, phone, contactName);
+    const flowResponse = flowResponseFrom(message);
+    if (flowResponse) {
+      await registry.dispatch(
+        { ...flowResponse, flowName: flowResponse.flowName || message.kapso?.flow_name },
+        { phone, contactId: contact.id, flowToken: flowResponse.flowToken || message.kapso?.flow_token, data: flowResponse },
+      );
+    } else {
+      await handleText(db, contact, messageText(message), message.id);
+    }
+    await db.query('UPDATE webhook_events SET processed_at = $1 WHERE event_key = $2', [now(), eventId]);
+    console.info('[Kapso webhook] Message processed');
+    return json({ ok: true });
+  } catch (error) {
+    console.error('[Kapso webhook] Message processing failed', error);
+    // Allow a subsequent Kapso retry to process this message rather than treating
+    // an unsuccessful attempt as a permanently completed duplicate.
+    try {
+      await db.query('DELETE FROM webhook_events WHERE event_key = $1 AND processed_at IS NULL', [eventId]);
+    } catch (cleanupError) {
+      console.error('[Kapso webhook] Failed to release message for retry', cleanupError);
+    }
+    return json({ error: 'Message processing failed' }, 500);
+  }
 }
