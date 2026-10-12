@@ -1,40 +1,55 @@
 {
   "version": "7.3",
-  "dataApiVersion": "3.0",
-  "routingModel": {
+  "routing_model": {
     "LESSON": [
-      "QUIZ"
+      "QUESTION_1"
     ],
-    "QUIZ": []
+    "QUESTION_1": [
+      "QUESTION_2"
+    ],
+    "QUESTION_2": [
+      "QUESTION_3"
+    ],
+    "QUESTION_3": [
+      "QUESTION_4"
+    ],
+    "QUESTION_4": [
+      "QUESTION_5"
+    ],
+    "QUESTION_5": [
+      "RESULTS"
+    ],
+    "RESULTS": []
   },
   "screens": [
     {
       "id": "LESSON",
-      "title": "Learning Session",
+      "title": "OSHC Masterclass",
       "terminal": false,
       "layout": {
         "type": "SingleColumnLayout",
         "children": [
           {
             "type": "TextHeading",
-            "text": "OSHC Knowledge Hub"
+            "text": "OSHC Masterclass 🇦🇺"
           },
           {
             "type": "TextSubheading",
-            "text": "Finding Healthcare in Australia"
+            "text": "Finding Healthcare in Australia 🩺"
           },
           {
             "type": "TextBody",
-            "text": "For non-emergency illnesses, a General Practitioner (GP) is usually your primary healthcare contact in Australia. Always ask about fees before booking; insurer direct-billing clinics can reduce or eliminate upfront costs. GPs also issue required referral letters for specialist appointments. For life-threatening emergencies, call 000."
+            "markdown": true,
+            "text": "G'day! Navigating healthcare in Australia is simple once you know the golden rules:\n\n• *Rule 1: GP First:* A General Practitioner (GP) is your primary doctor for non-emergencies, prescriptions, and official uni sick certificates.\n\n• *Rule 2: Direct Billing is Magic:* Choose a clinic in your OSHC insurer’s network that does \"direct billing\". They bill your insurer directly so you pay $0 upfront!\n\n• *Rule 3: Need a Specialist?* Want to see a dermatologist or specialist? You MUST get a referral letter from your GP first to ensure your OSHC covers it.\n\n• *Rule 4: Emergencies:* Call 000 only for serious, life-threatening emergencies."
           },
           {
             "type": "Footer",
-            "label": "Begin Quiz",
-            "onClickAction": {
+            "label": "Start Quiz ➔",
+            "on-click-action": {
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUIZ"
+                "name": "QUESTION_1"
               }
             }
           }
@@ -42,171 +57,432 @@
       }
     },
     {
-      "id": "QUIZ",
-      "title": "Session Quiz",
-      "terminal": true,
+      "id": "QUESTION_1",
+      "title": "Question 1 of 5",
+      "terminal": false,
       "layout": {
         "type": "SingleColumnLayout",
         "children": [
           {
             "type": "TextHeading",
-            "text": "Test Your Knowledge"
+            "text": "Question 1 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 1 • Earn +10 XP ⭐"
           },
           {
             "type": "TextBody",
-            "text": "Select the best answer for each question below to earn XP:"
+            "text": "You have had a persistent sore throat, mild fever, and tiredness for four days. You want medical advice, but it is not an emergency. What is generally the most appropriate first step?"
           },
           {
             "type": "RadioButtonsGroup",
             "name": "q1",
-            "label": "Question 1: You have had a persistent sore throat, mild fever, and tiredness for four days. You want medical advice, but it is not an emergency. What is generally the most appropriate first step?",
+            "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
                 "id": "a",
-                "title": "A. Go directly to a major hospital emergency depar...",
+                "title": "Option A",
                 "description": "Go directly to a major hospital emergency department"
               },
               {
                 "id": "b",
-                "title": "B. Book an appointment with a General Practitioner...",
+                "title": "Option B",
                 "description": "Book an appointment with a General Practitioner (GP)"
               },
               {
                 "id": "c",
-                "title": "C. Wait for symptoms to disappear before starting ...",
+                "title": "Option C",
                 "description": "Wait for symptoms to disappear before starting classes"
               },
               {
                 "id": "d",
-                "title": "D. Call emergency services (000) for ambulance tra...",
+                "title": "Option D",
                 "description": "Call emergency services (000) for ambulance transport"
               }
             ]
           },
           {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_2",
+      "title": "Question 2 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 2 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 1 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You want to consult a specialist doctor, such as a dermatologist for an ongoing skin rash. Under the Australian healthcare system, what must you do first to ensure OSHC benefit eligibility?"
+          },
+          {
             "type": "RadioButtonsGroup",
             "name": "q2",
-            "label": "Question 2: You want to consult a specialist doctor, such as a dermatologist for an ongoing skin rash. Under the Australian healthcare system, what must you do first to ensure OSHC benefit eligibility?",
+            "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
                 "id": "a",
-                "title": "A. Turn up at a private specialist clinic without ...",
+                "title": "Option A",
                 "description": "Turn up at a private specialist clinic without an appointment"
               },
               {
                 "id": "b",
-                "title": "B. Consult a GP first to obtain an official referr...",
+                "title": "Option B",
                 "description": "Consult a GP first to obtain an official referral letter"
               },
               {
                 "id": "c",
-                "title": "C. Apply directly to Medicare for special overseas...",
+                "title": "Option C",
                 "description": "Apply directly to Medicare for special overseas approval"
               },
               {
                 "id": "d",
-                "title": "D. Request permission from the Department of Home ...",
+                "title": "Option D",
                 "description": "Request permission from the Department of Home Affairs"
               }
             ]
           },
           {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_3"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_3",
+      "title": "Question 3 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 3 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 1 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You are booking a routine doctor consultation and want to minimize upfront fees and claim paperwork. What type of medical clinic should you look for?"
+          },
+          {
             "type": "RadioButtonsGroup",
             "name": "q3",
-            "label": "Question 3: You are booking a routine doctor consultation and want to minimize upfront fees and claim paperwork. What type of medical clinic should you look for?",
+            "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
                 "id": "a",
-                "title": "A. A medical practice in your OSHC insurer’s direc...",
+                "title": "Option A",
                 "description": "A medical practice in your OSHC insurer’s direct billing network"
               },
               {
                 "id": "b",
-                "title": "B. A boutique private surgical hospital offering e...",
+                "title": "Option B",
                 "description": "A boutique private surgical hospital offering elective procedures"
               },
               {
                 "id": "c",
-                "title": "C. A public hospital emergency department during n...",
+                "title": "Option C",
                 "description": "A public hospital emergency department during normal clinic hours"
               },
               {
                 "id": "d",
-                "title": "D. An unregistered community wellness clinic outsi...",
+                "title": "Option D",
                 "description": "An unregistered community wellness clinic outside the health system"
               }
             ]
           },
           {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_4",
+      "title": "Question 4 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 4 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 1 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You feel unwell in your student apartment late at night and need a medical certificate and advice before missing class tomorrow. Which digital service is available through your OSHC app?"
+          },
+          {
             "type": "RadioButtonsGroup",
             "name": "q4",
-            "label": "Question 4: You feel unwell in your student apartment late at night and need a medical certificate and advice before missing class tomorrow. Which digital service is available through your OSHC app?",
+            "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
                 "id": "a",
-                "title": "A. Online Doctor consultations for 24/7 video or p...",
+                "title": "Option A",
                 "description": "Online Doctor consultations for 24/7 video or phone appointments"
               },
               {
                 "id": "b",
-                "title": "B. Automatic emergency prescription delivery throu...",
+                "title": "Option B",
                 "description": "Automatic emergency prescription delivery through state hospitals"
               },
               {
                 "id": "c",
-                "title": "C. An online tool that lets students self-issue me...",
+                "title": "Option C",
                 "description": "An online tool that lets students self-issue medical sick certificates"
               },
               {
                 "id": "d",
-                "title": "D. A government portal that reimburses taxi travel...",
+                "title": "Option D",
                 "description": "A government portal that reimburses taxi travel to hospital clinics"
               }
             ]
           },
           {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_5",
+      "title": "Question 5 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 5 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 1 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You have just moved to a new suburb for university and want to locate a general doctor close to your accommodation. Where can you reliably search for registered healthcare practices?"
+          },
+          {
             "type": "RadioButtonsGroup",
             "name": "q5",
-            "label": "Question 5: You have just moved to a new suburb for university and want to locate a general doctor close to your accommodation. Where can you reliably search for registered healthcare practices?",
+            "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
                 "id": "a",
-                "title": "A. The National Health Services Directory via Heal...",
+                "title": "Option A",
                 "description": "The National Health Services Directory via Healthdirect or your OSHC provider"
               },
               {
                 "id": "b",
-                "title": "B. Random classified advertising flyers posted aro...",
+                "title": "Option B",
                 "description": "Random classified advertising flyers posted around local street corners"
               },
               {
                 "id": "c",
-                "title": "C. International student social chat groups offeri...",
+                "title": "Option C",
                 "description": "International student social chat groups offering unlicensed home visits"
               },
               {
                 "id": "d",
-                "title": "D. The Australian Border Force customs baggage ins...",
+                "title": "Option D",
                 "description": "The Australian Border Force customs baggage inspection office"
               }
             ]
           },
           {
             "type": "Footer",
-            "label": "Submit Answers",
-            "onClickAction": {
+            "label": "Review & Results ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "RESULTS"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "RESULTS",
+      "title": "Review & Answers",
+      "terminal": true,
+      "success": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "🎉 Session Review & Answers"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Review key answers, explanations & resources:"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 1 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_1.form.q1}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (Book an appointment with a General Practitioner (GP))\n\n💡 *Explanation:* In Australia, a General Practitioner (GP) is generally your primary healthcare contact for non-emergency illnesses. Emergency departments and 000 ambulances are reserved for life-threatening medical situations.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 2 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_2.form.q2}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (Consult a GP first to obtain an official referral letter)\n\n💡 *Explanation:* In Australia, specialist consultations generally require a referral letter from a GP. Without a valid referral, your OSHC insurer may not pay benefits for the specialist appointment.\n\n🔗 *Source Reference:* [What you need to know about the Australian healthcare system](https://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 3 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_3.form.q3}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (A medical practice in your OSHC insurer’s direct billing network)\n\n💡 *Explanation:* Direct billing network clinics have agreements with your OSHC provider to send the medical bill directly to the insurer. This helps reduce or eliminate the upfront payment you need to make at the time of your visit.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 4 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_4.form.q4}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (Online Doctor consultations for 24/7 video or phone appointments)\n\n💡 *Explanation:* Many OSHC apps offer a 24/7 Online Doctor service where students can speak with qualified doctors via video or phone for medical advice, prescriptions, and certificates with no out-of-pocket costs.\n\n🔗 *Source Reference:* [Overseas Student Health Cover (OSHC) | Overseas | Medibank](https://www.medibank.com.au/overseas-health-insurance/oshc/)\nhttps://www.medibank.com.au/overseas-health-insurance/oshc/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 5 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_5.form.q5}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (The National Health Services Directory via Healthdirect or your OSHC provider)\n\n💡 *Explanation:* You can find accredited general practices and medical clinics using the Australian Government’s Healthdirect directory or the provider search tool on your OSHC insurer’s website and app.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Official Support & Resources"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "• *Healthdirect Hotline:* 1800 022 222 (24/7 Registered Nurse advice)\n• *Emergency Services:* 000 (Ambulance, Fire, Police - life threats only)\n• *National Home Doctor:* 13 74 25 (After-hours bulk-billed home visits)"
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Healthdirect Directory",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.healthdirect.gov.au/australian-health-services"
+            }
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Gov OSHC Guidelines",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.health.gov.au/our-work/overseas-student-health-cover-oshc"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Claim XP & Save Results 🏆",
+            "on-click-action": {
               "name": "complete",
               "payload": {
-                "q1": "${form.q1}",
-                "q2": "${form.q2}",
-                "q3": "${form.q3}",
-                "q4": "${form.q4}",
-                "q5": "${form.q5}"
+                "q1": "${screen.QUESTION_1.form.q1}",
+                "q2": "${screen.QUESTION_2.form.q2}",
+                "q3": "${screen.QUESTION_3.form.q3}",
+                "q4": "${screen.QUESTION_4.form.q4}",
+                "q5": "${screen.QUESTION_5.form.q5}"
               }
             }
           }

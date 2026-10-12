@@ -21,57 +21,82 @@ export const QUIZ_CURRICULUM: QuizSessionConfig[] = [
   {
     sessionNumber: 1,
     topic: 'finding_healthcare',
-    title: 'Finding Healthcare in Australia',
+    title: 'Finding Healthcare in Australia 🩺',
     lesson:
-      'For non-emergency illnesses, a General Practitioner (GP) is usually your primary healthcare contact in Australia. Always ask about fees before booking; insurer direct-billing clinics can reduce or eliminate upfront costs. GPs also issue required referral letters for specialist appointments. For life-threatening emergencies, call 000.',
+      "G'day! Navigating healthcare in Australia is simple once you know the golden rules:\n\n" +
+      '• *Rule 1: GP First:* A General Practitioner (GP) is your primary doctor for non-emergencies, prescriptions, and official uni sick certificates.\n\n' +
+      '• *Rule 2: Direct Billing is Magic:* Choose a clinic in your OSHC insurer’s network that does "direct billing". They bill your insurer directly so you pay $0 upfront!\n\n' +
+      '• *Rule 3: Need a Specialist?* Want to see a dermatologist or specialist? You MUST get a referral letter from your GP first to ensure your OSHC covers it.\n\n' +
+      '• *Rule 4: Emergencies:* Call 000 only for serious, life-threatening emergencies.',
     questionIds: ['find_hc_1', 'find_hc_2', 'find_hc_3', 'find_hc_4', 'find_hc_5'],
   },
   {
     sessionNumber: 2,
     topic: 'emergency_care',
-    title: 'Urgent and Emergency Care',
+    title: 'Urgent vs Emergency Care 🚑',
     lesson:
-      'Call 000 for life-threatening medical emergencies. Hospital emergency departments prioritize patients strictly by clinical urgency rather than arrival time. For urgent but non-life-threatening medical issues, consider Medicare Urgent Care Clinics or after-hours GP services. Always verify what ambulance services your OSHC policy covers.',
+      'Know what to do when illness strikes suddenly:\n\n' +
+      '• *Call 000 (Triple Zero):* For severe chest pain, breathing difficulties, or unconsciousness. OSHC includes emergency ambulance transport!\n\n' +
+      '• *ER Reality Check:* Hospital Emergency Rooms (ER) prioritize patients by medical urgency. For mild symptoms, waiting times can be long.\n\n' +
+      '• *Pro-Tip: Medicare Urgent Care Clinics:* Sprains, cuts, or fevers? Medicare Urgent Care Clinics and after-hours GP services treat urgent issues without long ER waits.\n\n' +
+      '• *Healthdirect Hotline:* Call 1800 022 222 anytime for free 24/7 registered nurse advice.',
     questionIds: ['emerg_1', 'emerg_2', 'emerg_3', 'emerg_4', 'emerg_5'],
   },
   {
     sessionNumber: 3,
     topic: 'pharmacy',
-    title: 'Pharmacies and Prescription Medicines',
+    title: 'Pharmacies & Prescription Medicines 💊',
     lesson:
-      'Community pharmacies dispense prescriptions, including digital eScripts sent by SMS with a barcode/token. OSHC prescription medicine benefits depend on policy terms, eligible pharmaceutical benefits, co-payments, and annual benefit limits. Over-the-counter medicines without prescriptions are generally not claimable.',
+      'Everything you need to know about medicine in Australia:\n\n' +
+      '• *eScripts on Your Phone:* Doctors send prescriptions right to your smartphone via an SMS barcode token. Just show it at any community chemist!\n\n' +
+      '• *OSHC Medicine Benefit:* OSHC helps cover the cost of eligible doctor-prescribed PBS medicines above the co-payment (typically up to $50 per script, up to your annual policy limit).\n\n' +
+      '• *Over-the-Counter:* Panadol, cough lozenges, and vitamins bought without a prescription are not claimable.\n\n' +
+      '• *Generic vs Brand:* Generic medicines have identical active ingredients and save you money!',
     questionIds: ['pharm_1', 'pharm_2', 'pharm_3', 'pharm_4', 'pharm_5'],
   },
   {
     sessionNumber: 4,
     topic: 'claims',
-    title: 'Making and Tracking Claims',
+    title: 'Making & Tracking Claims 💵',
     lesson:
-      'Keep itemised medical receipts and tax invoices when paying upfront. Submit claims online or via your insurer app. Be aware that the benefit paid is often based on the Medicare Benefits Schedule (MBS) fee, which may leave an out-of-pocket "gap" if the provider charges higher rates. Direct billing clinics avoid upfront payment.',
+      'Get your money back fast with these claim tips:\n\n' +
+      '• *Always Keep Invoices:* If paying upfront, ask for an itemised tax invoice showing the doctor’s provider number and Medicare item codes.\n\n' +
+      '• *Claim via Your App:* Upload a photo of your receipt in your insurer’s mobile app (Bupa, Medibank, Allianz, etc.) for refunds within 2–5 business days.\n\n' +
+      '• *Mind "The Gap":* OSHC covers 100% of the government-set Medicare Benefits Schedule (MBS) fee. If a private clinic charges higher rates, the difference is your out-of-pocket gap.\n\n' +
+      '• *Shortcut:* Direct billing clinics eliminate the gap completely!',
     questionIds: ['claims_1', 'claims_2', 'claims_3', 'claims_4', 'claims_6'],
   },
   {
     sessionNumber: 5,
     topic: 'policy_management',
-    title: 'Understanding Your Policy & Visa Rules',
+    title: 'Visa Condition 8501 & Policy Rules 🛡️',
     lesson:
-      'Check your policy documentation for waiting periods (e.g. pre-existing conditions and pregnancy) and exclusions like cosmetic surgery. Maintaining continuous, compliant health cover for the entire visa duration is a mandatory legal condition (8501) of your student visa (Subclass 500).',
+      'Essential visa compliance and coverage rules:\n\n' +
+      '• *Visa Condition 8501:* Maintaining continuous OSHC throughout your Australian stay is mandatory. A lapse in coverage risks visa cancellation!\n\n' +
+      '• *Waiting Periods:* Pre-existing medical conditions (illnesses you had before arriving) and pregnancy services generally require a 12-month waiting period.\n\n' +
+      '• *Not Covered by Standard OSHC:* Routine dental checkups, glasses/optometry, and cosmetic surgery require separate private extras cover.',
     questionIds: ['policy_1', 'policy_2', 'policy_4', 'policy_6', 'policy_7'],
   },
   {
     sessionNumber: 6,
     topic: 'advanced_navigation',
-    title: 'Advanced Healthcare Navigation & Diagnostics',
+    title: 'Blood Tests, X-Rays & Hospital Care 🔬',
     lesson:
-      'This session explores diagnostic blood tests and x-rays, private hospital admissions, managing medical records, emergency triage expectations, and specialized prescription medicine benefits.',
+      'Mastering diagnostic tests and hospital services:\n\n' +
+      '• *Pathology & Imaging:* When your GP gives you a referral for blood tests or X-rays, choose an approved provider network for direct billing.\n\n' +
+      '• *Hospital Admissions:* If you need overnight care, public hospitals provide comprehensive care covered by OSHC. Contact your insurer promptly to issue a guarantee of payment.\n\n' +
+      '• *Digital Records:* Keep your eScripts, specialist referrals, and immunisation history saved on your phone for easy access across Australian clinics.',
     questionIds: ['find_hc_6', 'find_hc_7', 'emerg_6', 'emerg_7', 'pharm_6'],
   },
   {
     sessionNumber: 7,
     topic: 'mastery_review',
-    title: 'Final Mastery & Seamless Care',
+    title: 'Final Mastery & Seamless Care 🏆',
     lesson:
-      'The final mastery session covers managing repeat digital prescriptions (eScripts) and verifying direct billing clinics before consultations to avoid unexpected upfront bills.',
+      'Your final step to Australian healthcare mastery:\n\n' +
+      '• *Repeat eScripts:* When your doctor issues an eScript with repeat supplies, the chemist will SMS you a new barcode token upon each dispensing. Keep it ready for your next refill!\n\n' +
+      '• *Direct Billing Verification:* Always ask clinic reception or use your insurer app locator before appointments to confirm $0 gap billing.\n\n' +
+      '• *Finish Line:* Complete this final quiz to unlock your Health Checkup eligibility!',
     questionIds: ['pharm_7', 'claims_7'],
   },
 ];

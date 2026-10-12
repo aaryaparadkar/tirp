@@ -9,29 +9,40 @@ vi.mock('../src/kapso.js', () => ({
 }));
 
 describe('OshcQuizFlow WhatsApp Flow', () => {
-  it('defines valid Meta Flow v7.3 structure with LESSON and QUIZ screens', () => {
+  it('defines valid Meta Flow v7.3 multi-screen structure with individual question screens and results screen', () => {
     const mockDb: Database = { query: vi.fn(), close: vi.fn() };
     const flow = new OshcQuizFlow(mockDb);
 
     expect(flow.name).toBe('oshc_quiz_flow');
-    const def = flow.definition();
+    const def = flow.definition(0);
 
     expect(def.version).toBe('7.3');
-    expect(def.dataApiVersion).toBe('3.0');
-    expect(def.routingModel).toEqual({
-      LESSON: ['QUIZ'],
-      QUIZ: [],
+    expect(def.routing_model || def.routingModel).toEqual({
+      LESSON: ['QUESTION_1'],
+      QUESTION_1: ['QUESTION_2'],
+      QUESTION_2: ['QUESTION_3'],
+      QUESTION_3: ['QUESTION_4'],
+      QUESTION_4: ['QUESTION_5'],
+      QUESTION_5: ['RESULTS'],
+      RESULTS: [],
     });
 
-    expect(def.screens.length).toBe(2);
+    // 1 lesson screen + 5 question screens + 1 results screen = 7 screens
+    expect(def.screens.length).toBe(7);
 
     const lessonScreen = def.screens[0];
     expect(lessonScreen.id).toBe('LESSON');
     expect(lessonScreen.terminal).toBe(false);
 
-    const quizScreen = def.screens[1];
-    expect(quizScreen.id).toBe('QUIZ');
-    expect(quizScreen.terminal).toBe(true);
+    for (let i = 1; i <= 5; i++) {
+      const qScreen = def.screens[i];
+      expect(qScreen.id).toBe(`QUESTION_${i}`);
+      expect(qScreen.terminal).toBe(false);
+    }
+
+    const resultsScreen = def.screens[6];
+    expect(resultsScreen.id).toBe('RESULTS');
+    expect(resultsScreen.terminal).toBe(true);
   });
 
   it('accepts both explicit flowName and correlated flowToken', () => {

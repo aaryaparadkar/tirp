@@ -1,0 +1,493 @@
+{
+  "version": "7.3",
+  "routing_model": {
+    "LESSON": [
+      "QUESTION_1"
+    ],
+    "QUESTION_1": [
+      "QUESTION_2"
+    ],
+    "QUESTION_2": [
+      "QUESTION_3"
+    ],
+    "QUESTION_3": [
+      "QUESTION_4"
+    ],
+    "QUESTION_4": [
+      "QUESTION_5"
+    ],
+    "QUESTION_5": [
+      "RESULTS"
+    ],
+    "RESULTS": []
+  },
+  "screens": [
+    {
+      "id": "LESSON",
+      "title": "OSHC Masterclass",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "OSHC Masterclass 🇦🇺"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Visa Condition 8501 & Policy Rules 🛡️"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "Essential visa compliance and coverage rules:\n\n• *Visa Condition 8501:* Maintaining continuous OSHC throughout your Australian stay is mandatory. A lapse in coverage risks visa cancellation!\n\n• *Waiting Periods:* Pre-existing medical conditions (illnesses you had before arriving) and pregnancy services generally require a 12-month waiting period.\n\n• *Not Covered by Standard OSHC:* Routine dental checkups, glasses/optometry, and cosmetic surgery require separate private extras cover."
+          },
+          {
+            "type": "Footer",
+            "label": "Start Quiz ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_1"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_1",
+      "title": "Question 1 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 1 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 5 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You are considering booking a routine dental cleaning and an eye exam for new glasses. Are these services generally covered by a standard basic OSHC policy?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q1",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Yes, basic OSHC policies include unlimited free dental and optical treatment"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "No, routine dental and optical services usually require separate Extras cover"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Yes, dental checkups are paid in full if you attend a university hospital"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "No, international students are legally barred from visiting Australian dentists"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_2",
+      "title": "Question 2 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 2 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 5 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "As an international student on a Student Visa (Subclass 500), what does mandatory Visa Condition 8501 require regarding your health insurance?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q2",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "You only need to hold insurance during scheduled university examination weeks"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "You must maintain continuous, valid health insurance for your entire visa stay"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Health insurance is optional once you complete your initial arrival semester"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "You only need health cover if you participate in competitive campus sports"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_3"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_3",
+      "title": "Question 3 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 3 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 5 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "A student’s parents are visiting Australia on holiday for three weeks. The student has a Medibank OSHC policy. Are the visiting parents covered under the student’s OSHC?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q3",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Yes, OSHC automatically covers all visiting parents, siblings, and relatives"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "No, OSHC only covers the student and eligible dependants listed on their visa"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Yes, provided the parents stay in the same student rental apartment address"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "No, overseas visitors are legally prohibited from obtaining healthcare here"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_4",
+      "title": "Question 4 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 4 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 5 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You bought your OSHC online before leaving your home country and arrived in Australia one week later. When does your active health cover period start?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q4",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "From the confirmed date of your arrival in Australia"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "Exactly one full year after your university degree ends"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Only once you pass your first end-of-semester exam paper"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "From the date your high school diploma was first issued"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_5",
+      "title": "Question 5 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 5 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 5 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You have just graduated from university and are transitioning from a Student Visa to a Temporary Graduate Visa (Subclass 485). Can you remain on your student OSHC policy?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q5",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Yes, OSHC can be renewed for lifetime coverage even after your student visa ends"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "No, you must transition to an Overseas Visitors or Working Visa Health Cover"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Yes, if your university professors write a special letter to your local doctor"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "No, graduates are strictly barred from holding any private insurance in Australia"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Review & Results ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "RESULTS"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "RESULTS",
+      "title": "Review & Answers",
+      "terminal": true,
+      "success": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "🎉 Session Review & Answers"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Review key answers, explanations & resources:"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 1 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_1.form.q1}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (No, routine dental and optical services usually require separate Extras cover)\n\n💡 *Explanation:* Standard OSHC covers medical services and hospital treatments. Ancillary services like general dental, optical, and physiotherapy are generally excluded unless you purchase separate Extras cover.\n\n🔗 *Source Reference:* [What health insurance do I need for my Australian visa? | Medibank](https://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 2 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_2.form.q2}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (You must maintain continuous, valid health insurance for your entire visa stay)\n\n💡 *Explanation:* Visa Condition 8501 requires Student Visa holders to maintain adequate health insurance (typically OSHC) continuously for the entire duration of their stay in Australia. Allowing cover to lapse breaches visa conditions.\n\n🔗 *Source Reference:* [What health insurance do I need for my Australian visa? | Medibank](https://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 3 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_3.form.q3}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (No, OSHC only covers the student and eligible dependants listed on their visa)\n\n💡 *Explanation:* OSHC policies only cover the primary student and any eligible partner or dependent children listed on their student visa. Extended family members, including visiting parents, require separate Overseas Visitor Health Cover (OVHC) or travel insurance.\n\n🔗 *Source Reference:* [FAQs | Medibank](https://www.medibank.com.au/overseas-health-insurance/oshc/faqs/)\nhttps://www.medibank.com.au/overseas-health-insurance/oshc/faqs/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 4 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_4.form.q4}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (From the confirmed date of your arrival in Australia)\n\n💡 *Explanation:* When you purchase OSHC prior to arrival, your membership commences on the date you arrive in Australia. If your flight or arrival date changes, you should inform your insurer so they can adjust your records.\n\n🔗 *Source Reference:* [FAQs | Medibank](https://www.medibank.com.au/overseas-health-insurance/oshc/faqs/)\nhttps://www.medibank.com.au/overseas-health-insurance/oshc/faqs/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 5 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_5.form.q5}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (No, you must transition to an Overseas Visitors or Working Visa Health Cover)\n\n💡 *Explanation:* OSHC is exclusively for student visa holders. Once you move to a graduate or working visa (such as Subclass 485), you must transition to an Overseas Visitors Health Cover (OVHC) or Working Visa Cover to satisfy visa conditions.\n\n🔗 *Source Reference:* [What health insurance do I need for my Australian visa? | Medibank](https://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/which-health-cover-for-my-visa/"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Official Support & Resources"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "• *Healthdirect Hotline:* 1800 022 222 (24/7 Registered Nurse advice)\n• *Emergency Services:* 000 (Ambulance, Fire, Police - life threats only)\n• *National Home Doctor:* 13 74 25 (After-hours bulk-billed home visits)"
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Healthdirect Directory",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.healthdirect.gov.au/australian-health-services"
+            }
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Gov OSHC Guidelines",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.health.gov.au/our-work/overseas-student-health-cover-oshc"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Claim XP & Save Results 🏆",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "q1": "${screen.QUESTION_1.form.q1}",
+                "q2": "${screen.QUESTION_2.form.q2}",
+                "q3": "${screen.QUESTION_3.form.q3}",
+                "q4": "${screen.QUESTION_4.form.q4}",
+                "q5": "${screen.QUESTION_5.form.q5}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

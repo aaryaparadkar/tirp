@@ -63,7 +63,12 @@ async function handleText(db: Database, contact: Awaited<ReturnType<typeof ensur
 
 export async function handleWebhook(request: Request, db: Database, registry: FlowRegistry): Promise<Response> {
   const raw = Buffer.from(await request.arrayBuffer());
-  if (!verifyHmac(raw, request.headers.get('x-webhook-signature'), process.env.KAPSO_WEBHOOK_SECRET)) return json({ error: 'Invalid signature' }, 401);
+  if (!verifyHmac(raw, request.headers.get('x-webhook-signature'), process.env.KAPSO_WEBHOOK_SECRET)) {
+    try { process.loadEnvFile?.(); } catch {}
+    if (!verifyHmac(raw, request.headers.get('x-webhook-signature'), process.env.KAPSO_WEBHOOK_SECRET)) {
+      return json({ error: 'Invalid signature' }, 401);
+    }
+  }
   let payload: KapsoPayload;
   try { payload = JSON.parse(raw.toString('utf8')) as KapsoPayload; } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (payload.phone_number_id && catalogueConfig.phoneNumberId && payload.phone_number_id !== catalogueConfig.phoneNumberId) return json({ ok: true });

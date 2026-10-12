@@ -1,0 +1,84 @@
+{
+  "tests": [
+    {
+      "name": "complete multi-screen session 1 quiz",
+      "steps": [
+        {
+          "expect": {
+            "screen": "LESSON",
+            "status": "ready"
+          }
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "QUESTION_1"
+          }
+        },
+        {
+          "fill": "q1",
+          "value": "b"
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "QUESTION_2"
+          }
+        },
+        {
+          "fill": "q2",
+          "value": "b"
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "QUESTION_3"
+          }
+        },
+        {
+          "fill": "q3",
+          "value": "a"
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "QUESTION_4"
+          }
+        },
+        {
+          "fill": "q4",
+          "value": "a"
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "QUESTION_5"
+          }
+        },
+        {
+          "fill": "q5",
+          "value": "a"
+        },
+        {
+          "submit": true,
+          "expect": {
+            "screen": "RESULTS"
+          }
+        },
+        {
+          "submit": true,
+          "expect": {
+            "status": "completed",
+            "completion": {
+              "q1": "b",
+              "q2": "b",
+              "q3": "a",
+              "q4": "a",
+              "q5": "a"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

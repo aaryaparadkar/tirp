@@ -1,0 +1,256 @@
+{
+  "version": "7.3",
+  "routing_model": {
+    "LESSON": [
+      "QUESTION_1"
+    ],
+    "QUESTION_1": [
+      "QUESTION_2"
+    ],
+    "QUESTION_2": [
+      "RESULTS"
+    ],
+    "RESULTS": []
+  },
+  "screens": [
+    {
+      "id": "LESSON",
+      "title": "OSHC Masterclass",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "OSHC Masterclass 🇦🇺"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Final Mastery & Seamless Care 🏆"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "Your final step to Australian healthcare mastery:\n\n• *Repeat eScripts:* When your doctor issues an eScript with repeat supplies, the chemist will SMS you a new barcode token upon each dispensing. Keep it ready for your next refill!\n\n• *Direct Billing Verification:* Always ask clinic reception or use your insurer app locator before appointments to confirm $0 gap billing.\n\n• *Finish Line:* Complete this final quiz to unlock your Health Checkup eligibility!"
+          },
+          {
+            "type": "Footer",
+            "label": "Start Quiz ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_1"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_1",
+      "title": "Question 1 of 2",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 1 of 2"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 7 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "Following a telehealth or clinic appointment, your GP issues your prescription as an electronic \"token\" sent by SMS to your smartphone. How do you use this token at the pharmacy?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q1",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Show the QR code or link in the SMS to the chemist to dispense the medicine"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "Print the SMS on paper and mail it to the Australian Federal Police department"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Enter the code into a university exam portal to prove you were sick today"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "Electronic prescriptions are invalid in Australia and must be handwritten on parchment"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_2",
+      "title": "Question 2 of 2",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 2 of 2"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 7 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You visit a clinic that offers direct billing for Medibank OSHC. You present your valid OSHC membership card and photo ID. What happens with the bill for eligible consultation fees?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q2",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "The clinic sends the bill directly to Medibank, reducing what you pay upfront"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "You must pay the total bill in cash and physically mail checks to Canberra"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "The clinic reports your medical history directly to immigration border control"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "You are required to perform voluntary administrative clinic duties instead of paying"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Review & Results ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "RESULTS"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "RESULTS",
+      "title": "Review & Answers",
+      "terminal": true,
+      "success": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "🎉 Session Review & Answers"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Review key answers, explanations & resources:"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 1 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_1.form.q1}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (Show the QR code or link in the SMS to the chemist to dispense the medicine)\n\n💡 *Explanation:* In Australia, electronic prescriptions (eScripts) arrive as an SMS or email token with a barcode or QR code. The community pharmacist scans the token directly from your smartphone to dispense your medicine.\n\n🔗 *Source Reference:* [What you need to know about the Australian healthcare system](https://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 2 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_2.form.q2}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (The clinic sends the bill directly to Medibank, reducing what you pay upfront)\n\n💡 *Explanation:* At a direct billing clinic, the provider bills the insurer directly for the benefit amount. You only pay any remaining gap fee if the doctor charges above the benefit, eliminating the need to submit a claim later.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Official Support & Resources"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "• *Healthdirect Hotline:* 1800 022 222 (24/7 Registered Nurse advice)\n• *Emergency Services:* 000 (Ambulance, Fire, Police - life threats only)\n• *National Home Doctor:* 13 74 25 (After-hours bulk-billed home visits)"
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Healthdirect Directory",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.healthdirect.gov.au/australian-health-services"
+            }
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Gov OSHC Guidelines",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.health.gov.au/our-work/overseas-student-health-cover-oshc"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Claim XP & Save Results 🏆",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "q1": "${screen.QUESTION_1.form.q1}",
+                "q2": "${screen.QUESTION_2.form.q2}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

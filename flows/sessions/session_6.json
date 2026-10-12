@@ -1,0 +1,493 @@
+{
+  "version": "7.3",
+  "routing_model": {
+    "LESSON": [
+      "QUESTION_1"
+    ],
+    "QUESTION_1": [
+      "QUESTION_2"
+    ],
+    "QUESTION_2": [
+      "QUESTION_3"
+    ],
+    "QUESTION_3": [
+      "QUESTION_4"
+    ],
+    "QUESTION_4": [
+      "QUESTION_5"
+    ],
+    "QUESTION_5": [
+      "RESULTS"
+    ],
+    "RESULTS": []
+  },
+  "screens": [
+    {
+      "id": "LESSON",
+      "title": "OSHC Masterclass",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "OSHC Masterclass 🇦🇺"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Blood Tests, X-Rays & Hospital Care 🔬"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "Mastering diagnostic tests and hospital services:\n\n• *Pathology & Imaging:* When your GP gives you a referral for blood tests or X-rays, choose an approved provider network for direct billing.\n\n• *Hospital Admissions:* If you need overnight care, public hospitals provide comprehensive care covered by OSHC. Contact your insurer promptly to issue a guarantee of payment.\n\n• *Digital Records:* Keep your eScripts, specialist referrals, and immunisation history saved on your phone for easy access across Australian clinics."
+          },
+          {
+            "type": "Footer",
+            "label": "Start Quiz ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_1"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_1",
+      "title": "Question 1 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 1 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 6 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "A doctor examines you and recommends a blood test and an ankle X-ray. How do diagnostic pathology and imaging services generally work under the Australian healthcare system?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q1",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "The GP gives you a referral form to take to an accredited pathology or imaging clinic"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "You must personally purchase blood testing machinery from a local pharmacy shop"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Diagnostic scans can only be performed if you are admitted overnight to hospital"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "Blood tests are illegal for temporary international visa holders in Australia"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_2",
+      "title": "Question 2 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 2 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 6 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You need planned medical treatment in a private hospital. Why is it advantageous to check whether the private hospital is in your insurer’s \"Members’ Choice\" network?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q2",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Members’ Choice hospitals have agreed rates that help reduce unexpected out-of-pocket costs"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "Non-network hospitals are completely free for all international university students"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Members’ Choice hospitals allow patients to bypass Australian visa requirements"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "Choosing a network hospital guarantees that your semester grades will increase"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_3"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_3",
+      "title": "Question 3 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 3 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 6 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You witness a severe traffic accident near your student campus and need to call for emergency paramedics. Do you need mobile credit or a local phone plan to dial 000 in Australia?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q3",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Yes, emergency calls require a minimum of $20 international calling credit"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "No, calls to 000 are completely free from any mobile phone, landline, or payphone"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Yes, you must enter your student visa identification number before connecting"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "No, but you can only call 000 if your university campus security office is open"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_4",
+      "title": "Question 4 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 4 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 6 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "You attend a public hospital emergency department with a minor finger cut. Other patients who arrive after you with severe chest pain are seen first. Why does this occur?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q4",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "Australian hospital emergency departments treat patients based on medical urgency (triage)"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "The hospital prioritizes patients based on how long their student visa lasts"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "International students are always placed at the end of the line regardless of symptoms"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "The receptionists only treat patients who hold private Australian citizenship cards"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next Question ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "QUESTION_5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "QUESTION_5",
+      "title": "Question 5 of 5",
+      "terminal": false,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Question 5 of 5"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Level 6 • Earn +10 XP ⭐"
+          },
+          {
+            "type": "TextBody",
+            "text": "A student is prescribed specialized medication for a complex condition. The pharmacist explains that the medication is not subsidized by the government PBS for non-residents. What should the student understand about costs?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "q5",
+            "label": "Select your answer:",
+            "required": true,
+            "data-source": [
+              {
+                "id": "a",
+                "title": "Option A",
+                "description": "OSHC benefits for pharmaceuticals have set limits, meaning high-cost drugs can have large gaps"
+              },
+              {
+                "id": "b",
+                "title": "Option B",
+                "description": "The Australian government pays 100% of all experimental treatments for foreign visitors"
+              },
+              {
+                "id": "c",
+                "title": "Option C",
+                "description": "Private health insurers will automatically buy the pharmaceutical company on your behalf"
+              },
+              {
+                "id": "d",
+                "title": "Option D",
+                "description": "The student must immediately renounce their visa to receive medication in Australia"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Review & Results ➔",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "RESULTS"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "RESULTS",
+      "title": "Review & Answers",
+      "terminal": true,
+      "success": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "🎉 Session Review & Answers"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Review key answers, explanations & resources:"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 1 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_1.form.q1}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (The GP gives you a referral form to take to an accredited pathology or imaging clinic)\n\n💡 *Explanation:* In Australia, doctors provide referral request forms for pathology (blood tests) or radiology (X-rays/ultrasounds), which you take to an accredited diagnostic clinic. OSHC contributes benefits towards included MBS diagnostic items.\n\n🔗 *Source Reference:* [Medibank OSHC Member Guide](https://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf)\nhttps://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 2 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_2.form.q2}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (Members’ Choice hospitals have agreed rates that help reduce unexpected out-of-pocket costs)\n\n💡 *Explanation:* Members’ Choice private hospitals have agreements with your health insurer establishing agreed pricing for hospital accommodation and theatre fees, minimizing out-of-pocket gap expenses. Non-network private hospitals may result in significantly higher out-of-pocket costs.\n\n🔗 *Source Reference:* [Medibank OSHC Member Guide](https://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf)\nhttps://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 3 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_3.form.q3}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option B (No, calls to 000 are completely free from any mobile phone, landline, or payphone)\n\n💡 *Explanation:* In Australia, calls to 000 (Triple Zero) are free of charge from any telephone, including mobile phones without credit, SIM cards, or landlines.\n\n🔗 *Source Reference:* [What you need to know about the Australian healthcare system](https://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/understanding-australian-healthcare/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 4 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_4.form.q4}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (Australian hospital emergency departments treat patients based on medical urgency (triage))\n\n💡 *Explanation:* Australian emergency departments operate on clinical triage, meaning patients with critical or life-threatening conditions are always treated first. Non-urgent cases may experience long waiting times, which is why a GP or urgent care clinic is often more appropriate for minor issues.\n\n🔗 *Source Reference:* [The Australian Healthcare System | Overseas health insurance | Medibank](https://www.medibank.com.au/overseas-health-insurance/guides/australian-healthcare/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/australian-healthcare/"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Question 5 (+10 XP)"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_5.form.q5}`"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "*Correct Answer:* Option A (OSHC benefits for pharmaceuticals have set limits, meaning high-cost drugs can have large gaps)\n\n💡 *Explanation:* Because international students are generally not eligible for PBS government subsidies, high-cost medicines can be expensive. OSHC policies have annual pharmaceutical benefit limits, which may result in significant out-of-pocket expenses.\n\n🔗 *Source Reference:* [Medibank OSHC Member Guide](https://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf)\nhttps://www.medibank.com.au/content/dam/b2c/docs/mpl/Medibank_OSHC_Member_Guide.pdf"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Official Support & Resources"
+          },
+          {
+            "type": "TextBody",
+            "markdown": true,
+            "text": "• *Healthdirect Hotline:* 1800 022 222 (24/7 Registered Nurse advice)\n• *Emergency Services:* 000 (Ambulance, Fire, Police - life threats only)\n• *National Home Doctor:* 13 74 25 (After-hours bulk-billed home visits)"
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Healthdirect Directory",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.healthdirect.gov.au/australian-health-services"
+            }
+          },
+          {
+            "type": "EmbeddedLink",
+            "text": "Gov OSHC Guidelines",
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://www.health.gov.au/our-work/overseas-student-health-cover-oshc"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Claim XP & Save Results 🏆",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "q1": "${screen.QUESTION_1.form.q1}",
+                "q2": "${screen.QUESTION_2.form.q2}",
+                "q3": "${screen.QUESTION_3.form.q3}",
+                "q4": "${screen.QUESTION_4.form.q4}",
+                "q5": "${screen.QUESTION_5.form.q5}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

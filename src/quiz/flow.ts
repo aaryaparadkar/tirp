@@ -15,83 +15,178 @@ export class OshcQuizFlow extends WhatsAppFlow {
   }
 
   /**
-   * Generates a Flow JSON definition (Meta Flow version 7.3)
-   * Screen 1: LESSON (Informative Session)
-   * Screen 2: QUIZ (5 Multiple-choice questions with RadioButtonsGroup)
+   * Generates a multi-screen Flow JSON definition (Meta Flow version 7.3):
+   * Screen 1: LESSON (Interactive, fun educational briefing)
+   * Screen 2..N+1: QUESTION_1..QUESTION_N (Each question on its own dedicated screen)
+   * Screen N+2: RESULTS (Answers review, explanations, XP rewards, assist links, and claim action)
    */
-  definition(): FlowDefinition {
-    // Generate flow based on Session 1 (or general curriculum layout)
-    const session1 = QUIZ_CURRICULUM[0];
-    const questions = getSessionQuestions(session1);
+  definition(sessionIndex = 0): FlowDefinition {
+    const session = QUIZ_CURRICULUM[sessionIndex] || QUIZ_CURRICULUM[0];
+    const questions = getSessionQuestions(session);
+    const totalQuestions = questions.length;
 
-    const questionChildren = questions.map((q, index) => ({
-      type: 'RadioButtonsGroup',
-      name: `q${index + 1}`,
-      label: `Question ${index + 1}: ${q.question}`,
-      required: true,
-      'data-source': q.options.map((opt) => ({
-        id: opt.id,
-        title: `${opt.id.toUpperCase()}. ${opt.text.length > 50 ? opt.text.slice(0, 47) + '...' : opt.text}`,
-        description: opt.text.length > 50 ? opt.text : undefined,
-      })),
-    }));
+    // 1. Build routing model: LESSON -> QUESTION_1 -> ... -> QUESTION_N -> RESULTS
+    const routing_model: Record<string, string[]> = {
+      LESSON: ['QUESTION_1'],
+    };
 
+    questions.forEach((_, index) => {
+      const current = `QUESTION_${index + 1}`;
+      const next = index < totalQuestions - 1 ? `QUESTION_${index + 2}` : 'RESULTS';
+      routing_model[current] = [next];
+    });
+    routing_model['RESULTS'] = [];
+
+    // 2. Screen 1: Informative Session
+    const lessonScreen = {
+      id: 'LESSON',
+      title: 'OSHC Masterclass',
+      terminal: false,
+      layout: {
+        type: 'SingleColumnLayout',
+        children: [
+          { type: 'TextHeading', text: 'OSHC Masterclass 🇦🇺' },
+          { type: 'TextSubheading', text: session.title },
+          { type: 'TextBody', markdown: true, text: session.lesson },
+          {
+            type: 'Footer',
+            label: 'Start Quiz ➔',
+            'on-click-action': {
+              name: 'navigate',
+              next: { type: 'screen', name: 'QUESTION_1' },
+            },
+          },
+        ],
+      },
+    };
+
+    // 3. Question Screens (one per question)
+    const questionScreens = questions.map((q, index) => {
+      const screenId = `QUESTION_${index + 1}`;
+      const nextScreenId = index < totalQuestions - 1 ? `QUESTION_${index + 2}` : 'RESULTS';
+      const isLast = index === totalQuestions - 1;
+
+      return {
+        id: screenId,
+        title: `Question ${index + 1} of ${totalQuestions}`,
+        terminal: false,
+        layout: {
+          type: 'SingleColumnLayout',
+          children: [
+            { type: 'TextHeading', text: `Question ${index + 1} of ${totalQuestions}` },
+            { type: 'TextSubheading', text: `Level ${session.sessionNumber} • Earn +${q.xp} XP ⭐` },
+            { type: 'TextBody', text: q.question },
+            {
+              type: 'RadioButtonsGroup',
+              name: `q${index + 1}`,
+              label: 'Select your answer:',
+              required: true,
+              'data-source': q.options.map((opt) => ({
+                id: opt.id,
+                title: `Option ${opt.id.toUpperCase()}`,
+                description: opt.text,
+              })),
+            },
+            {
+              type: 'Footer',
+              label: isLast ? 'Review & Results ➔' : 'Next Question ➔',
+              'on-click-action': {
+                name: 'navigate',
+                next: { type: 'screen', name: nextScreenId },
+              },
+            },
+          ],
+        },
+      };
+    });
+
+    // 4. Final Review & Results Screen
+    const resultsChildren: Array<Record<string, unknown>> = [
+      { type: 'TextHeading', text: '🎉 Session Review & Answers' },
+      { type: 'TextSubheading', text: 'Review key answers, explanations & resources:' },
+    ];
+
+    // Add answer & explanation card for each question
+    questions.forEach((q, index) => {
+      const correctOpt = q.options.find((o) => o.id === q.correctOptionId);
+      resultsChildren.push(
+        {
+          type: 'TextSubheading',
+          text: `Question ${index + 1} (+${q.xp} XP)`,
+        },
+        {
+          type: 'TextBody',
+          markdown: true,
+          text: `\`'*Your Selection:* Option ' + \${screen.QUESTION_${index + 1}.form.q${index + 1}}\``,
+        },
+        {
+          type: 'TextBody',
+          markdown: true,
+          text:
+            `*Correct Answer:* Option ${q.correctOptionId.toUpperCase()} (${correctOpt ? correctOpt.text : ''})\n\n` +
+            `💡 *Explanation:* ${q.explanation}\n\n` +
+            `🔗 *Source Reference:* [${q.source.title}](${q.source.url})\n` +
+            `${q.source.url}`,
+        }
+      );
+    });
+
+    // Assist and official emergency links
+    resultsChildren.push(
+      { type: 'TextHeading', text: 'Official Support & Resources' },
+      {
+        type: 'TextBody',
+        markdown: true,
+        text: '• *Healthdirect Hotline:* 1800 022 222 (24/7 Registered Nurse advice)\n• *Emergency Services:* 000 (Ambulance, Fire, Police - life threats only)\n• *National Home Doctor:* 13 74 25 (After-hours bulk-billed home visits)',
+      },
+      {
+        type: 'EmbeddedLink',
+        text: 'Healthdirect Directory',
+        'on-click-action': {
+          name: 'open_url',
+          url: 'https://www.healthdirect.gov.au/australian-health-services',
+        },
+      },
+      {
+        type: 'EmbeddedLink',
+        text: 'Gov OSHC Guidelines',
+        'on-click-action': {
+          name: 'open_url',
+          url: 'https://www.health.gov.au/our-work/overseas-student-health-cover-oshc',
+        },
+      }
+    );
+
+    // Payload mapping answers across screens
     const completePayload: Record<string, string> = {};
     questions.forEach((_, index) => {
-      completePayload[`q${index + 1}`] = `\${form.q${index + 1}}`;
+      completePayload[`q${index + 1}`] = `\${screen.QUESTION_${index + 1}.form.q${index + 1}}`;
     });
+
+    resultsChildren.push({
+      type: 'Footer',
+      label: 'Claim XP & Save Results 🏆',
+      'on-click-action': {
+        name: 'complete',
+        payload: completePayload,
+      },
+    });
+
+    const resultsScreen = {
+      id: 'RESULTS',
+      title: 'Review & Answers',
+      terminal: true,
+      success: true,
+      layout: {
+        type: 'SingleColumnLayout',
+        children: resultsChildren,
+      },
+    };
 
     return {
       version: '7.3',
-      dataApiVersion: '3.0',
-      routingModel: {
-        LESSON: ['QUIZ'],
-        QUIZ: [],
-      },
-      screens: [
-        {
-          id: 'LESSON',
-          title: 'Learning Session',
-          terminal: false,
-          layout: {
-            type: 'SingleColumnLayout',
-            children: [
-              { type: 'TextHeading', text: 'OSHC Knowledge Hub' },
-              { type: 'TextSubheading', text: session1.title },
-              { type: 'TextBody', text: session1.lesson },
-              {
-                type: 'Footer',
-                label: 'Begin Quiz',
-                onClickAction: {
-                  name: 'navigate',
-                  next: { type: 'screen', name: 'QUIZ' },
-                },
-              },
-            ],
-          },
-        },
-        {
-          id: 'QUIZ',
-          title: 'Session Quiz',
-          terminal: true,
-          layout: {
-            type: 'SingleColumnLayout',
-            children: [
-              { type: 'TextHeading', text: 'Test Your Knowledge' },
-              { type: 'TextBody', text: 'Select the best answer for each question below to earn XP:' },
-              ...questionChildren,
-              {
-                type: 'Footer',
-                label: 'Submit Answers',
-                onClickAction: {
-                  name: 'complete',
-                  payload: completePayload,
-                },
-              },
-            ],
-          },
-        },
-      ],
+      routing_model,
+      screens: [lessonScreen, ...questionScreens, resultsScreen],
     };
   }
 
@@ -167,9 +262,13 @@ export class OshcQuizFlow extends WhatsAppFlow {
           earnedXp += q.xp;
           newCorrectIds.push(q.id);
         }
-        breakdownLines.push(`Q${index + 1}: Correct! ${firstTime ? `(+${q.xp} XP)` : ''}\n${q.explanation}`);
+        breakdownLines.push(
+          `Q${index + 1}: Correct! ${firstTime ? `(+${q.xp} XP)` : ''}\n${q.explanation}\n🔗 Source: ${q.source.title} (${q.source.url})`
+        );
       } else {
-        breakdownLines.push(`Q${index + 1}: Not quite. (Correct answer was ${q.correctOptionId.toUpperCase()})\n${q.explanation}`);
+        breakdownLines.push(
+          `Q${index + 1}: Not quite. (Correct answer was ${q.correctOptionId.toUpperCase()})\n${q.explanation}\n🔗 Source: ${q.source.title} (${q.source.url})`
+        );
       }
     });
 

@@ -24,13 +24,16 @@ function questionMessage(question: QuizQuestion, index: number, total: number): 
 
 export async function handleQuizText(db: Database, contact: { id: string; phone: string }, text: string): Promise<boolean> {
   const command = text.trim().toLowerCase();
-  if (!['quiz', 'start quiz', 'start', 'yes', 'stop quiz', 'stop reminders'].includes(command)) return false;
+  const stopKeywords = ['stop', 'stop quiz', 'cancel', 'cancel quiz', 'quit', 'exit', 'stop reminders'];
 
-  if (command === 'stop quiz' || command === 'stop reminders') {
+  if (stopKeywords.includes(command)) {
+    await db.query("DELETE FROM quiz_sessions WHERE contact_id = $1 AND status = 'active'", [contact.id]);
     await db.query('UPDATE contacts SET quiz_opted_in = false WHERE id = $1', [contact.id]);
-    await send(contact.phone, 'Quiz reminders are turned off. You can reply QUIZ any time to take another session.');
+    await send(contact.phone, 'The quiz has been stopped. Your earned XP is safely saved! Reply MENU to browse services, or QUIZ whenever you want to resume.');
     return true;
   }
+
+  if (!['quiz', 'start quiz', 'start', 'yes'].includes(command)) return false;
 
   if (command === 'quiz' || command === 'start quiz') {
     await db.query('UPDATE contacts SET quiz_opted_in = true WHERE id = $1', [contact.id]);
@@ -140,9 +143,11 @@ export async function answerQuiz(db: Database, contact: { id: string; phone: str
   const question = QUESTION_BANK.find((item) => item.id === session.question_ids[session.current_index]);
   if (!question) return false;
   const answer = text.trim().toLowerCase().replace(/[.)]$/, '');
+  if (/^(hi|hello|hey|menu|catalogue|services?|support)$/i.test(answer)) return false;
+
   const option = question.options.find((item) => item.id === answer || String(question.options.indexOf(item) + 1) === answer);
   if (!option) {
-    await send(contact.phone, 'Please answer with A, B, C, or D.');
+    await send(contact.phone, 'Please answer with A, B, C, or D (or reply STOP to exit the quiz).');
     return true;
   }
 
