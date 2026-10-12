@@ -45,7 +45,7 @@ const NON_EMERGENCY_GUARD_ES = /\b(leve|ligero|un poco)\s+(resfriado|tos|dolor d
 const NON_EMERGENCY_GUARD_ZH = /(轻微|有点|小感冒|轻微咳嗽|轻微头痛|低烧|喉咙有点痛)/;
 
 export function isEmergency(text: string): boolean {
-  const normalized = (text || '').trim();
+  const normalized = (text || '').normalize('NFKC').trim();
   if (!normalized) return false;
   if (ZH_HIGH_RISK.some((w) => normalized.includes(w))) return true;
   if (
@@ -91,9 +91,12 @@ export function emergencyCallText(lang: SupportedLanguage = 'en'): string {
 }
 
 export function isGreeting(text: string): boolean {
-  const t = (text || '').trim().toLowerCase();
-  if (/^(hi|hii+|hello|hey|yo|hola|start|menu|menú|help|ayuda|options|opciones|catalogue|catalog|services?|servicios?)$/i.test(t)) return true;
-  if (/^(你好|您好|嗨|哈喽|菜单|帮助|开始)\W*$/u.test((text || '').trim())) return true;
+  const raw = (text || '').normalize('NFKC').trim();
+  const t = raw.toLowerCase();
+  if (/^(hi|hii+|hello|hell+o|helo|hey|yo|hola|start|menu|menú|help|ayuda|options|opciones|catalogue|catalog|services?|servicios?)$/i.test(t)) return true;
+  // 1-typo tolerance for short greeting/menu commands.
+  if (/^(hell?o|helo|mennu|menue|meun|hep|hepl|suport|ayua)$/i.test(t)) return true;
+  if (/^(你好|您好|嗨|哈喽|菜单|帮助|开始)\W*$/u.test(raw)) return true;
   if (/^good\s*(morning|afternoon|evening)$/i.test(t)) return true;
   if (/^(buenos d[ií]as|buenas tardes|buenas noches)\W*$/i.test(t)) return true;
   if (/^(namaste|assalam.*|sat\s*sri\s*akal)$/i.test(t)) return true;
