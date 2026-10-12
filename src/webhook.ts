@@ -287,7 +287,7 @@ function verifyKapsoSignature(body: Buffer, signature: string | null, secret: st
 export async function handleWebhook(request: Request, db: Database, registry: FlowRegistry): Promise<Response> {
   const raw = Buffer.from(await request.arrayBuffer());
   const signature = request.headers.get('x-webhook-signature');
-  const secret = "794a740d2a8495e81ba7735e33fec80ca3cdcb624001075e29da7c95a69c91bb"
+  const secret = (process.env.KAPSO_WEBHOOK_SECRET || '').trim();
   // Fail closed rather than accepting unsigned public webhooks.
   if (!secret) {
     console.error('[Kapso webhook] KAPSO_WEBHOOK_SECRET is not configured');
