@@ -57,10 +57,10 @@ describe('multilingual routing', () => {
     delete process.env.MISTRAL_API_KEY;
     const es = await answerWithSources('una pregunta rara sin fuentes', { intent: 'unknown', confidence: 0.3, needsClarification: true, keywords: ['xyzzy-no-match'], source: 'fallback' }, { chunks: [], language: 'es' });
     expect(es.language).toBe('es');
-    expect(es.text).toMatch(/No encontré|no puedo generar/);
+    expect(es.text).toMatch(/Quiero entenderte|No encontré|no puedo generar/);
     const zh = await answerWithSources('一个没有来源的奇怪问题', { intent: 'unknown', confidence: 0.3, needsClarification: true, keywords: ['xyzzy-no-match'], source: 'fallback' }, { chunks: [], language: 'zh-CN' });
     expect(zh.language).toBe('zh-CN');
-    expect(zh.text).toMatch(/没有找到|暂时无法/);
+    expect(zh.text).toMatch(/准确理解|没有找到|暂时无法/);
     if (saved !== undefined) process.env.MISTRAL_API_KEYS = saved;
   });
 });

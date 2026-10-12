@@ -1,11 +1,13 @@
 import type { Database } from './db.js';
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
 import { catalogueReply, ensureContact, listCategories, listServices, lockPreferredLanguage, sendCatalogueFlow, servicesReply } from './catalogue.js';
-import { getMenuOptions, t } from './i18n.js';
+import { getMenuOptions, getQuickMenuOptions, t } from './i18n.js';
+import { canonicalizeForMatch, normalizeInput, resolveCommandAlias } from './input-normalization.js';
 import { recentTurns, saveTurn } from './conversation.js';
 import { FlowRegistry } from './flows.js';
 import { detectLanguage } from './language.js';
 import { id, json, now, verifyHmac } from './lib.js';
+import { chunkForWhatsApp, formatWhatsAppAnswer } from './response-format.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
 import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
 import type { Contact, FlowResponse, SupportedLanguage } from './types.js';
@@ -52,7 +54,12 @@ export function messageText(message: KapsoMessage): string {
 }
 
 function isLanguageNeutralSelection(text: string): boolean {
-  return /^(\d|menu:.*)$/.test(text.trim().toLowerCase());
+  return /^(\d|menu:.*)$/.test(canonicalizeForMatch(text));
+}
+
+function isFullMenuRequest(text: string): boolean {
+  const c = canonicalizeForMatch(text);
+  return c === 'menu' || c === 'menú' || c === 'menus' || c === 'options' || c === 'opciones' || text.trim() === '菜单' || resolveCommandAlias(c) === 'menu';
 }
 
 export async function resolveContactLanguage(
@@ -71,41 +78,34 @@ export async function resolveContactLanguage(
   return locked;
 }
 
-async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
+async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage, full = false): Promise<void> {
   const kapso = await import('./kapso.js');
-  const options = getMenuOptions(lang);
+  const body = full ? t(lang, 'fullMenu') : t(lang, 'greeting');
+  const options = full ? getMenuOptions(lang) : getQuickMenuOptions(lang);
   const sections = [
     {
       title: 'OSHC',
-      rows: options.slice(0, 8).map((o) => ({
+      rows: options.map((o) => ({
         id: `menu:${menuIdFor(o.intent)}`,
         title: o.label.slice(0, 24),
         description: o.description.slice(0, 72),
       })),
     },
   ];
-  // Try rich list first (best for 8 options), then text fallback.
+  // Rich list first (5 quick goals, or full 9 on MENU), then buttons, then text.
   try {
-    await kapso.sendList(
-      phoneNumberId,
-      to,
-      t(lang, 'greeting'),
-      t(lang, 'chooseTopic'),
-      sections,
-      t(lang, 'menuFooter'),
-    );
+    await kapso.sendList(phoneNumberId, to, body, t(lang, 'chooseTopic'), sections, t(lang, 'menuFooter'));
     return;
   } catch { /* fall through */ }
   try {
-    const quick = options.filter((o) => ['coverage', 'claims', 'emergency'].includes(o.intent));
-    await kapso.sendButtons(phoneNumberId, to, t(lang, 'greeting').slice(0, 900), [
-      { id: 'menu:coverage', title: quick[0]?.label.slice(0, 20) || 'Cover' },
-      { id: 'menu:claims', title: quick[1]?.label.slice(0, 20) || 'Claims' },
-      { id: 'menu:emergency', title: quick[2]?.label.slice(0, 20) || 'Urgent' },
-    ], t(lang, 'replyMenuHint'));
+    const buttons = options.slice(0, 3);
+    await kapso.sendButtons(phoneNumberId, to, body.slice(0, 900), buttons.map((o) => ({
+      id: `menu:${menuIdFor(o.intent)}`,
+      title: o.label.slice(0, 20),
+    })), t(lang, 'replyMenuHint'));
     return;
   } catch { /* fall through */ }
-  await kapso.sendText(phoneNumberId, to, t(lang, 'greeting'));
+  await kapso.sendText(phoneNumberId, to, body);
 }
 
 function menuIdFor(intent: string): string {
@@ -142,23 +142,17 @@ async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedL
 
 async function sendAnswer(phoneNumberId: string, to: string, text: string): Promise<void> {
   const kapso = await import('./kapso.js');
-  // WhatsApp text limit ~4096; chunk long answers.
-  const chunks: string[] = [];
-  let rest = text;
-  while (rest.length > 1500) {
-    const cut = rest.lastIndexOf('\n', 1500);
-    const idx = cut > 500 ? cut : 1500;
-    chunks.push(rest.slice(0, idx));
-    rest = rest.slice(idx).trim();
-  }
-  chunks.push(rest);
-  for (const c of chunks) {
+  // Normalize every outbound answer: stable structure, safe emphasis, bounded length.
+  const formatted = formatWhatsAppAnswer(text);
+  for (const c of chunkForWhatsApp(formatted, 1500)) {
     if (c.trim()) await kapso.sendText(phoneNumberId, to, c);
   }
 }
 
-function isSupportKeyword(text: string): boolean {
-  return /^(support|soporte|ayuda|客服|帮助|supporto)$/i.test(text.trim());
+export function isSupportKeyword(text: string): boolean {
+  const raw = normalizeInput(text);
+  if (/^(support|soporte|ayuda|客服|帮助|supporto|help|ayua|contacto)$/i.test(raw)) return true;
+  return resolveCommandAlias(canonicalizeForMatch(raw)) === 'support' || resolveCommandAlias(canonicalizeForMatch(raw)) === 'help';
 }
 
 async function handleText(
@@ -184,10 +178,11 @@ async function handleText(
     return;
   }
 
-  // 2) Greeting / menu.
+  // 2) Greeting / menu: first-run gets 5 goals, MENU gets all 9.
   if (isGreeting(text)) {
-    await sendGreeting(phoneId, contact.phone, lang);
-    await saveTurn(db, contact.id, 'outbound', t(lang, 'greeting'), { intent: 'greeting', language: lang });
+    const full = isFullMenuRequest(text);
+    await sendGreeting(phoneId, contact.phone, lang, full);
+    await saveTurn(db, contact.id, 'outbound', full ? t(lang, 'fullMenu') : t(lang, 'greeting'), { intent: 'greeting', language: lang });
     return;
   }
 

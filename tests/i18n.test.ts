@@ -13,8 +13,11 @@ describe('localized greetings and menus', () => {
         'coverage', 'claims', 'providers', 'pharmacy', 'visa_compliance',
         'student_rewards', 'updates', 'forms_and_guides', 'emergency',
       ]);
+      // First-run greeting is a 5-goal quick menu (same numbers 1-5); full list lives in fullMenu.
       expect(t(lang, 'greeting')).toContain('1.');
-      expect(t(lang, 'greeting')).toContain('9.');
+      expect(t(lang, 'greeting')).toContain('5.');
+      expect(t(lang, 'fullMenu')).toContain('1.');
+      expect(t(lang, 'fullMenu')).toContain('9.');
     }
   });
   it('menu labels are actually translated', () => {

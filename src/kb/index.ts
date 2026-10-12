@@ -6,12 +6,48 @@ const STOP = new Set(
 );
 
 export function tokenize(text: string): string[] {
-  return text
+  const base = (text || '')
+    .normalize('NFKC')
     .toLowerCase()
+    .replace(/'s\b/g, ' ')
     .replace(/[^a-z0-9\s$]/g, ' ')
     .split(/\s+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 1 && !STOP.has(t));
+    .map((tok) => tok.trim())
+    .filter((tok) => tok.length > 1 && !STOP.has(tok));
+  // Add singular variants so "medicines/receipts" match "medicine/receipt".
+  const out: string[] = [];
+  for (const tok of base) {
+    out.push(tok);
+    if (tok.length > 4 && tok.endsWith('s') && !tok.endsWith('ss')) {
+      const singular = tok.slice(0, -1);
+      if (singular.length > 2 && !STOP.has(singular) && !out.includes(singular)) out.push(singular);
+    }
+  }
+  return out;
+}
+
+function haystackTokens(hay: string): string[] {
+  return hay.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+}
+
+function editDistanceCapped(a: string, b: string, cap = 2): number {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  if (a.length > 24 || b.length > 24) return cap + 1;
+  let prev = new Array<number>(b.length + 1);
+  let curr = new Array<number>(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j++) {
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > cap) return cap + 1;
+    [prev, curr] = [curr, prev];
+  }
+  return prev[b.length];
 }
 
 // Intent keyword hints to bias lexical retrieval toward the right documents.
@@ -36,11 +72,27 @@ const INTENT_KEYWORDS: Record<Intent, string[]> = {
 
 export function scoreChunk(chunk: KbChunk, queryTokens: string[], intent: Intent): number {
   const hay = `${chunk.title} ${chunk.heading} ${chunk.content}`.toLowerCase();
+  const hayToks = haystackTokens(`${chunk.title} ${chunk.heading} ${chunk.content}`);
+  const haySet = new Set(hayToks);
   let score = 0;
   for (const tok of queryTokens) {
     if (!tok) continue;
     const occurrences = hay.split(tok).length - 1;
-    if (occurrences > 0) score += Math.min(occurrences, 4) * (tok.length >= 6 ? 2 : 1);
+    if (occurrences > 0) {
+      score += Math.min(occurrences, 4) * (tok.length >= 6 ? 2 : 1);
+      continue;
+    }
+    // Typo tolerance for longer tokens: half credit for near-miss in chunk.
+    if (tok.length >= 5 && /^[a-z0-9$]+$/.test(tok)) {
+      const budget = tok.length <= 6 ? 1 : 2;
+      for (const ht of haySet) {
+        if (Math.abs(ht.length - tok.length) > budget) continue;
+        if (editDistanceCapped(tok, ht, budget) <= budget) {
+          score += 0.8;
+          break;
+        }
+      }
+    }
   }
   // Heading/title bonus
   const headHay = `${chunk.title} ${chunk.heading}`.toLowerCase();
@@ -58,6 +110,8 @@ export function scoreChunk(chunk: KbChunk, queryTokens: string[], intent: Intent
   return score;
 }
 
+const MIN_RETRIEVAL_SCORE = 2;
+
 export function retrieve(
   chunks: KbChunk[],
   query: string,
@@ -68,7 +122,7 @@ export function retrieve(
   if (!tokens.length) return [];
   const scored = chunks
     .map((chunk) => ({ chunk, score: scoreChunk(chunk, tokens, intent) }))
-    .filter((r) => r.score > 0)
+    .filter((r) => r.score >= MIN_RETRIEVAL_SCORE)
     .sort((a, b) => b.score - a.score);
   // Diversity: avoid returning 4 chunks from the same file when possible.
   const picked: RetrievalResult[] = [];
