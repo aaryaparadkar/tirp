@@ -33,3 +33,24 @@ Users can reply `QUIZ` to opt in and start. Each session begins with an informat
    - Users receive one reminder each week after opting in.
    - `STOP QUIZ` turns off reminders; `QUIZ` resumes.
    - Set `QUIZ_REMINDER_TEMPLATE` to an approved WhatsApp template name for production reminders (disabled by default in sandbox).
+
+## Triggering a quiz via API
+
+Operators can start (or resume) a quiz for a user without waiting for them
+to type `QUIZ`:
+
+```bash
+curl -X POST https://<service>/quiz/start \
+  -H "Authorization: Bearer $QUIZ_TRIGGER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"phone": "+61400000000"}'
+```
+
+- Requires `QUIZ_TRIGGER_TOKEN` (Bearer auth, timing-safe compare).
+- `phone` must be E.164 (`+` optional, spaces/dashes tolerated).
+- Idempotent: an existing active session is resumed, never duplicated
+  (enforced by a partial unique index, migration `0005`).
+- Rate-limited to 5 triggers per phone per minute.
+- Response: `{"ok": true, "phone": "...", "session": 1, "resumed": false, "delivery": "flow"|"text"|"completed"}`.
+- Set `QUIZ_FLOW_ID` to deliver the interactive Flow; otherwise the bot
+  falls back to text chat.

@@ -84,6 +84,21 @@ export function resolveMenuSelection(text: string): Intent | null {
   return null;
 }
 
+/**
+ * Deterministic intent classification with explicit rule priority.
+ *
+ * Priority is load-bearing: money questions (claims/reimbursements) and
+ * coverage questions must win over bare facility words like "hospital",
+ * and care-seeking ("what should I do, I feel sick") must win over
+ * location lookup ("find a doctor near me"). Providers only fires with a
+ * location-seeking signal so "Can I claim my hospital bill?" routes to
+ * claims, not providers.
+ */
+const LOCATION_SIGNAL =
+  /find|near|nearby|near me|around me|direct billing|members.? ?choice|address|location|book\s+(a\s+)?(doctor|gp|clinic|appointment)|open\s+(late|weekend|now)|which\s+(clinic|doctor|gp|hospital)/;
+const CARE_ACTION =
+  /what\s+(should|do)\s+i\s+do|feel.*sick|i.*\bsick\b|\bfever\b|\bflu\b|symptoms|feel\s+unwell|health\s+system|medicare|seeing\s+a\s+doctor.*(sick|ill)|sick.*doctor/;
+
 export function deterministicClassify(text: string): IntentClassification | null {
   const raw = normalizeInput(text || '');
   const t = raw.toLowerCase();
@@ -97,47 +112,84 @@ export function deterministicClassify(text: string): IntentClassification | null
     has('emergencia', 'ambulancia', 'inconsciente', 'no puedo respirar', 'sangrado grave', 'dolor en el pecho', 'accidente grave', 'tuve un accidente') ||
     hasRaw('救命', '紧急', '救护车', '呼吸困难', '不能呼吸', '失去意识', '昏倒', '严重出血', '胸痛', '出事故', '车祸', '有人受伤')
   ) {
-    return { intent: 'emergency', confidence: 0.95, needsClarification: false, keywords: ['emergency'], source: 'deterministic' };
+    return { intent: 'emergency', confidence: 0.95, needsClarification: false, keywords: ['emergency'], source: 'deterministic', rule: 'emergency-keywords' };
   }
   if (has('reward', 'livebetter', 'live better', 'perk', 'student plus', 'recompensa', 'beneficio') || hasFuzzy('reward', 'rewards', 'recompensa', 'beneficio') || hasRaw('奖励', '福利', '优惠', '学生奖励')) {
-    return { intent: 'student_rewards', confidence: 0.9, needsClarification: false, keywords: ['rewards'], source: 'deterministic' };
+    return { intent: 'student_rewards', confidence: 0.9, needsClarification: false, keywords: ['rewards'], source: 'deterministic', rule: 'rewards' };
   }
   if (has('waiting period', 'waiting time', 'pre-existing', 'pre existing', 'how long until covered', 'período de espera', 'periodo de espera') || hasFuzzy('waiting', 'espera') || hasRaw('等待期', '等待时间')) {
-    return { intent: 'waiting_periods', confidence: 0.9, needsClarification: false, keywords: ['waiting'], source: 'deterministic' };
+    return { intent: 'waiting_periods', confidence: 0.9, needsClarification: false, keywords: ['waiting'], source: 'deterministic', rule: 'waiting-periods' };
   }
   if (has('visa', 'visado', 'subclass 500', 'condition 8501', 'student visa requirement') || hasFuzzy('visa', 'visado', 'subclass') || hasRaw('签证', '500签证')) {
-    return { intent: 'visa_compliance', confidence: 0.9, needsClarification: false, keywords: ['visa'], source: 'deterministic' };
+    return { intent: 'visa_compliance', confidence: 0.9, needsClarification: false, keywords: ['visa'], source: 'deterministic', rule: 'visa' };
   }
-  if (has('direct billing', 'find a doctor', 'find doctor', 'find gp', 'find a gp', 'nearby clinic', 'members choice', "members' choice", 'provider', 'facturación directa', 'facturacion directa', 'proveedor', 'clínica', 'clinica') || hasFuzzy('provider', 'providers', 'proveedor', 'pharmacy', 'doctor', 'clinic', 'clinica', 'hospital') || hasRaw('直付', '诊所', '医生', '医疗机构')) {
-    // Disambiguate pharmacy misspellings handled below; providers wins for doctor/clinic.
-    if (hasFuzzy('pharmacy', 'prescription', 'farmacia') && !hasFuzzy('doctor', 'clinic', 'hospital', 'provider', 'proveedor')) {
-      return { intent: 'pharmacy', confidence: 0.86, needsClarification: false, keywords: ['pharmacy'], source: 'deterministic' };
+  // Care-seeking beats fuzzy coverage/location matches ("fever" is close to
+  // "cover" by edit distance). Money questions defer to the money rules below.
+  if (
+    CARE_ACTION.test(t) ||
+    has('sick', 'cold', 'fever', 'seeing a doctor', 'healthcare', 'health system', 'medicare', 'enfermo', 'fiebre', 'salud', 'feel unwell', 'symptoms') ||
+    /\bgp\b/.test(t) ||
+    hasRaw('生病', '感冒', '发烧', '医疗')
+  ) {
+    const moneySignal = has('claim', 'reimburse', 'refund', 'money back', 'paid back', 'get paid', 'cover', 'billing', 'bill', 'cost', 'price') || hasRaw('报销', '理赔', '退款', '收据', '发票', '费用');
+    if (!moneySignal && !LOCATION_SIGNAL.test(t)) {
+      return { intent: 'healthcare_navigation', confidence: 0.82, needsClarification: false, keywords: ['healthcare'], source: 'deterministic', rule: 'healthcare-action' };
     }
-    return { intent: 'providers', confidence: 0.88, needsClarification: false, keywords: ['provider'], source: 'deterministic' };
   }
+  // Medicine context wins over generic money-back phrasing ("处方药可以报销吗").
   if (has('pharmacy', 'prescription', 'medicine', 'medicines', 'pbs', 'over-the-counter', 'drug cost', 'farmacia', 'medicamento', 'receta') || hasFuzzy('pharmacy', 'prescription', 'medicine', 'medicines', 'farmacia', 'medicamento', 'receta') || hasRaw('药房', '处方', '药品', '药物')) {
-    return { intent: 'pharmacy', confidence: 0.88, needsClarification: false, keywords: ['pharmacy'], source: 'deterministic' };
+    return { intent: 'pharmacy', confidence: 0.88, needsClarification: false, keywords: ['pharmacy'], source: 'deterministic', rule: 'pharmacy' };
   }
-  if (has('reimburse', 'reimbursement', 'refund', 'paid back', 'get my money back', 'bank account payment', 'reembolso', 'money back') || hasFuzzy('reimburse', 'reimbursement', 'refund', 'reembolso') || containsCommandVariant(c, 'reimbursement') || hasRaw('报销', '退款', '拿回费用')) {
-    return { intent: 'reimbursements', confidence: 0.88, needsClarification: false, keywords: ['reimbursement'], source: 'deterministic' };
+  // Money-back specificity: "when do I get paid" beats generic "claim".
+  if (has('reimburse', 'reimbursement', 'refund', 'paid back', 'get my money back', 'bank account payment', 'reembolso', 'money back', 'when will i be paid') || hasFuzzy('reimburse', 'reimbursement', 'refund', 'reembolso') || containsCommandVariant(c, 'reimbursement') || hasRaw('报销', '退款', '拿回费用')) {
+    return { intent: 'reimbursements', confidence: 0.88, needsClarification: false, keywords: ['reimbursement'], source: 'deterministic', rule: 'reimbursements' };
   }
   if (has('claim', 'receipt', 'invoice', 'claim form', 'online member services', 'how to claim', 'reclamo', 'reclamación', 'recibo') || hasFuzzy('claim', 'claims', 'reclamo', 'receipt', 'invoice') || containsCommandVariant(c, 'claim') || hasRaw('理赔', '索赔', '收据', '发票')) {
-    return { intent: 'claims', confidence: 0.9, needsClarification: false, keywords: ['claim'], source: 'deterministic' };
+    return { intent: 'claims', confidence: 0.9, needsClarification: false, keywords: ['claim'], source: 'deterministic', rule: 'claims' };
   }
   if (has('form', 'brochure', 'member guide', 'cover summary', 'pdf', 'download', 'formulario', 'folleto', 'guía', 'guia') || hasFuzzy('form', 'forms', 'brochure', 'guide', 'formulario', 'folleto') || hasRaw('表格', '指南', '手册', '下载', '保障摘要')) {
-    return { intent: 'forms_and_guides', confidence: 0.85, needsClarification: false, keywords: ['forms'], source: 'deterministic' };
+    return { intent: 'forms_and_guides', confidence: 0.85, needsClarification: false, keywords: ['forms'], source: 'deterministic', rule: 'forms' };
   }
-  if (has('essentials', 'comprehensive', 'what is covered', "what's covered", 'is dental covered', 'is optical covered', 'hospital cover', 'extras cover', 'out-of-pocket', 'out of pocket', 'mbs', 'cobertura', 'what do i get', 'money back') || hasFuzzy('cover', 'coverage', 'cobertura', 'essentials', 'comprehensive', 'hospital') || containsCommandVariant(c, 'cover') || hasRaw('保障范围', '包括', '承保')) {
-    return { intent: 'coverage', confidence: 0.87, needsClarification: false, keywords: ['coverage'], source: 'deterministic' };
+  // Coverage needs a coverage signal — bare "hospital" alone is not coverage.
+  if (
+    has('essentials', 'comprehensive', 'what is covered', "what's covered", 'is dental covered', 'is optical covered', 'hospital cover', 'extras cover', 'out-of-pocket', 'out of pocket', 'mbs', 'cobertura', 'what do i get') ||
+    hasFuzzy('cover', 'coverage', 'cobertura', 'essentials', 'comprehensive') ||
+    containsCommandVariant(c, 'cover') ||
+    hasRaw('保障范围', '包括', '承保')
+  ) {
+    return { intent: 'coverage', confidence: 0.87, needsClarification: false, keywords: ['coverage'], source: 'deterministic', rule: 'coverage' };
   }
-  if (has('gp', 'sick', 'cold', 'fever', 'hospital', 'seeing a doctor', 'healthcare', 'health system', 'medicare', 'enfermo', 'fiebre', 'salud') || hasRaw('生病', '感冒', '发烧', '医疗')) {
-    return { intent: 'healthcare_navigation', confidence: 0.8, needsClarification: false, keywords: ['healthcare'], source: 'deterministic' };
+  // Providers only with a location-seeking signal; otherwise fall through.
+  // tSpace folds hyphens so "direct-billing" matches "direct billing".
+  const tSpace = t.replace(/[-_]/g, ' ');
+  const hasSpace = (...words: string[]) => words.some((w) => tSpace.includes(w));
+  if (
+    hasSpace('direct billing', 'find a doctor', 'find doctor', 'find gp', 'find a gp', 'nearby clinic', 'members choice', "members' choice", 'provider', 'facturación directa', 'facturacion directa', 'proveedor', 'clínica', 'clinica') ||
+    hasFuzzy('provider', 'providers', 'proveedor', 'doctor', 'clinic', 'clinica', 'hospital', 'gp') ||
+    hasRaw('直付', '诊所', '医生', '医疗机构', '医院')
+  ) {
+    if (LOCATION_SIGNAL.test(t) || has('direct billing', 'provider', 'proveedor', 'members choice', "members' choice") || hasRaw('直付', '医疗机构')) {
+      return { intent: 'providers', confidence: 0.88, needsClarification: false, keywords: ['provider'], source: 'deterministic', rule: 'providers-location' };
+    }
+    // Bare facility word with an action verb elsewhere (claim/cover/cost):
+    // let the money/coverage rules above or the LLM decide.
+    if (has('claim', 'cover', 'cost', 'price', 'bill', 'sick', 'fever', 'do i do', 'should i')) return null;
+    return { intent: 'providers', confidence: 0.78, needsClarification: false, keywords: ['provider'], source: 'deterministic', rule: 'providers-bare' };
   }
   if (has('update', 'news', 'announcement', 'change to cover', 'new benefit', 'actualiz', 'noticia') || hasFuzzy('update', 'updates', 'news') || hasRaw('更新', '通知', '最新消息')) {
-    return { intent: 'updates', confidence: 0.8, needsClarification: false, keywords: ['updates'], source: 'deterministic' };
+    return { intent: 'updates', confidence: 0.8, needsClarification: false, keywords: ['updates'], source: 'deterministic', rule: 'updates' };
   }
-  if (has('contact', 'support', 'human', 'speak to someone', 'call medibank', 'phone number', 'store near', 'ayuda', 'contacto', 'persona') || hasFuzzy('support', 'contact', 'human', 'person', 'ayuda', 'contacto', 'soporte') || hasRaw('客服', '人工', '联系', '帮助')) {
-    return { intent: 'support', confidence: 0.85, needsClarification: false, keywords: ['support'], source: 'deterministic' };
+  // Support needs an explicit human-contact signal, not a bare "contact/help"
+  // inside a longer domain question (claims already handled above).
+  if (
+    has('speak to someone', 'call medibank', 'phone number', 'store near', 'talk to a human', 'real person', 'hablar con', 'persona real') ||
+    hasFuzzy('support', 'contact', 'human', 'ayuda', 'contacto', 'soporte') ||
+    hasRaw('客服', '人工', '联系', '帮助')
+  ) {
+    if (t.trim().split(/\s+/).length <= 3 || !has('claim', 'cover', 'visa', 'waiting', 'reward', 'pharmacy', 'doctor', 'hospital', 'reimburse')) {
+      return { intent: 'support', confidence: 0.85, needsClarification: false, keywords: ['support'], source: 'deterministic', rule: 'support' };
+    }
+    return null;
   }
   return null;
 }
@@ -173,12 +225,21 @@ export async function classifyIntent(
         };
         const intent = (parsed.intent || 'unknown') as Intent;
         if (VALID_INTENTS.includes(intent)) {
+          const confidence = typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+            ? Math.min(1, Math.max(0, parsed.confidence))
+            : 0.6;
+          const keywords = Array.isArray(parsed.keywords)
+            ? parsed.keywords
+              .map((k) => String(k).toLowerCase().replace(/[^a-z0-9áéíóúüñ _-]/g, '').trim())
+              .filter((k) => k.length >= 2 && k.length <= 32)
+              .slice(0, 6)
+            : [];
           return {
             intent,
-            subIntent: typeof parsed.sub_intent === 'string' ? parsed.sub_intent : undefined,
-            confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.6,
-            needsClarification: Boolean(parsed.needs_clarification),
-            keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 6).map(String) : [],
+            subIntent: typeof parsed.sub_intent === 'string' ? parsed.sub_intent.slice(0, 64) : undefined,
+            confidence,
+            needsClarification: parsed.needs_clarification === true || confidence < 0.45,
+            keywords,
             source: 'llm',
           };
         }

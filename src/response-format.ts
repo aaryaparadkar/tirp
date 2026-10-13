@@ -53,6 +53,60 @@ function collapseWhitespace(text: string): string {
     .trim();
 }
 
+/** A line that must keep its own visual line (list, heading, instruction, URL). */
+const LIST_LINE_RE = /^\s*(•|[-*·▪◦]\s+|\d+[.)]\s+|[A-Da-d][.)]\s+)/;
+function isStructuralLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return true;
+  if (LIST_LINE_RE.test(line)) return true;
+  if (/^\*.+\*$/.test(t)) return true; // full-line *bold* heading
+  if (/^https?:\/\/\S+$/.test(t)) return true;
+  if (/^[📚🎉🏆💡🔗⭐⚠️❓✅❌ℹ️✨👉]/.test(t)) return true;
+  if (/^\*?(next step|下一步|siguiente paso)/i.test(t)) return true;
+  if (/^(sources|资料来源|fuentes)\s*[:：]/i.test(t)) return true;
+  if (/^question \d+\s+of\s+\d+$/i.test(t)) return true;
+  if (/^(reply|replies|responde|请回复|回复|tap |pulsa|call now|emergency\?)/i.test(t)) return true;
+  return false;
+}
+
+/**
+ * Rejoin soft-wrapped prose into paragraphs. WhatsApp wraps visually on the
+ * device, so one-sentence-per-line from the model renders as a ragged,
+ * half-width column. Structural lines (lists, headings, instructions, URLs)
+ * keep their lines; ordinary prose lines are joined with spaces.
+ */
+function reflowProse(text: string): string {
+  const lines = text.split('\n');
+  const out: string[] = [];
+  let prose: string[] = [];
+  const flush = (): void => {
+    if (!prose.length) return;
+    const joined = prose
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(' ')
+      .replace(/([\u4e00-\u9fff]) ([\u4e00-\u9fff])/g, '$1$2')
+      .replace(/\s+([,.!?;:。、，．；：！？])/g, '$1');
+    if (joined) out.push(joined);
+    prose = [];
+  };
+  for (const line of lines) {
+    if (!line.trim()) {
+      flush();
+      out.push('');
+      continue;
+    }
+    if (isStructuralLine(line)) {
+      flush();
+      out.push(line.trimEnd());
+      continue;
+    }
+    prose.push(line);
+  }
+  flush();
+  return out.join('\n');
+}
+
 function truncateAtBoundary(text: string, max: number): string {
   if (text.length <= max) return text;
   const slice = text.slice(0, max);
@@ -76,6 +130,7 @@ export function formatWhatsAppAnswer(raw: string, opts: FormatOptions = {}): str
   out = stripInternalMarkers(out);
   out = toWhatsAppBold(out);
   out = normalizeBullets(out);
+  out = reflowProse(out);
   out = collapseWhitespace(out);
   out = truncateAtBoundary(out, max);
   return out.trim();
@@ -113,6 +168,25 @@ export function validateAnswer(text: string, opts: { maxChars?: number } = {}): 
   else if (text.length > max) issues.push({ code: 'long', detail: `Answer is ${text.length} chars (target ${max}).` });
   if (/\[S\d+\]/.test(text)) issues.push({ code: 'internal_marker', detail: 'Contains internal source markers like [S1].' });
   if (/\n{3,}/.test(text)) issues.push({ code: 'spacing', detail: 'Contains 3+ consecutive newlines.' });
+  // Ragged "one short sentence per line" prose renders as a half-width column.
+  const lines = text.split('\n');
+  let shortRun = 0;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) {
+      shortRun = 0;
+      continue;
+    }
+    if (isStructuralLine(line) || t.length >= 45) {
+      shortRun = 0;
+      continue;
+    }
+    shortRun += 1;
+    if (shortRun >= 4) {
+      issues.push({ code: 'choppy', detail: 'Contains 4+ consecutive short prose lines; reflow into paragraphs.' });
+      break;
+    }
+  }
   if (/^#{1,4}\s/m.test(text)) issues.push({ code: 'md_heading', detail: 'Contains Markdown # headings (use *bold*).' });
   if (/\*\*.+?\*\*/.test(text)) issues.push({ code: 'md_bold', detail: 'Contains **bold** (use *bold* for WhatsApp).' });
   const disclaimerHits = (text.match(/General information only|仅为来自|Solo información general/gi) || []).length;

@@ -43,6 +43,27 @@ export async function sendText(phoneNumberId: string, to: string, body: string):
   return createKapsoClient().messages.sendText({ phoneNumberId, to: to.replace(/^\+/, ''), body });
 }
 
+/**
+ * Format an assistant message for WhatsApp (prose reflow, safe emphasis,
+ * bounded length) and send it in WhatsApp-sized chunks. Centralizes the
+ * outbound contract so every caller renders consistently.
+ */
+export async function sendFormattedText(
+  phoneNumberId: string,
+  to: string,
+  body: string,
+  opts: { maxChars?: number; chunkLimit?: number } = {},
+): Promise<unknown[]> {
+  const { formatWhatsAppAnswer, chunkForWhatsApp } = await import('./response-format.js');
+  const formatted = formatWhatsAppAnswer(body, { maxChars: opts.maxChars });
+  const chunks = chunkForWhatsApp(formatted, opts.chunkLimit ?? 1500).filter((c) => c.trim());
+  const results: unknown[] = [];
+  for (const chunk of chunks) {
+    results.push(await sendText(phoneNumberId, to, chunk));
+  }
+  return results;
+}
+
 export interface MenuButton {
   id: string;
   title: string;

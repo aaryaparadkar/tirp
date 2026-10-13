@@ -13,13 +13,56 @@ import {
 
 type PlayerState = { earned_question_ids: string[]; completed_sessions: number };
 
+export type QuizDelivery = 'flow' | 'text' | 'completed';
+
+export interface QuizStartResult {
+  sessionId: string | null;
+  sessionNumber: number | null;
+  topic?: string;
+  title?: string;
+  delivery: QuizDelivery;
+  resumed: boolean;
+}
+
 async function send(to: string, body: string): Promise<void> {
-  await sendText(catalogueConfig.phoneNumberId, to, body);
+  const { formatWhatsAppAnswer } = await import('../response-format.js');
+  await sendText(catalogueConfig.phoneNumberId, to, formatWhatsAppAnswer(body));
 }
 
 function questionMessage(question: QuizQuestion, index: number, total: number): string {
   const options = question.options.map((option) => `${option.id.toUpperCase()}. ${option.text}`).join('\n');
-  return `Question ${index + 1} of ${total}\n${question.question}\n\n${options}\n\nReply with A, B, C, or D.`;
+  return `*Question ${index + 1} of ${total}*\n${question.question}\n\n${options}\n\nReply with A, B, C, or D.`;
+}
+
+type ActiveSessionRow = { id: string; question_ids: string[]; current_index: number };
+
+async function getActiveSession(db: Database, contactId: string): Promise<ActiveSessionRow | null> {
+  const active = await db.query<{ id: string }>(
+    "SELECT id FROM quiz_sessions WHERE contact_id = $1 AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    [contactId]
+  );
+  if (!active.rows[0]) return null;
+  const session = await db.query<{ topic: string; question_ids: string[]; current_index: number }>(
+    'SELECT topic, question_ids, current_index FROM quiz_sessions WHERE id = $1',
+    [active.rows[0].id]
+  );
+  if (!session.rows[0]) return null;
+  return { id: active.rows[0].id, question_ids: session.rows[0].question_ids || [], current_index: session.rows[0].current_index };
+}
+
+async function resendCurrentQuestion(db: Database, contact: { id: string; phone: string }): Promise<ActiveSessionRow | null> {
+  const session = await getActiveSession(db, contact.id);
+  if (!session) return null;
+  const questions = session.question_ids
+    .map((questionId) => QUESTION_BANK.find((question) => question.id === questionId))
+    .filter((q): q is QuizQuestion => Boolean(q));
+  const current = questions[session.current_index];
+  if (current) {
+    await send(contact.phone, questionMessage(current, session.current_index, questions.length));
+  } else {
+    await send(contact.phone, 'You already have a quiz in progress. Reply A, B, C, or D to answer, or YES to repeat the current question.');
+  }
+  return session;
 }
 
 export async function handleQuizText(db: Database, contact: { id: string; phone: string }, text: string): Promise<boolean> {
@@ -72,8 +115,24 @@ export async function handleQuizText(db: Database, contact: { id: string; phone:
   return true;
 }
 
-export async function startSession(db: Database, contact: { id: string; phone: string }): Promise<void> {
+/**
+ * Shared quiz entrypoint used by both the WhatsApp QUIZ command and the
+ * authenticated HTTP trigger. Idempotent: an existing active session is
+ * resumed instead of duplicated. Concurrent triggers are serialized by a
+ * partial unique index (one active session per contact); the loser of a
+ * simultaneous insert resumes the winner's session.
+ */
+export async function startQuizForContact(
+  db: Database,
+  contact: { id: string; phone: string }
+): Promise<QuizStartResult> {
+  await db.query('UPDATE contacts SET quiz_opted_in = true WHERE id = $1', [contact.id]).catch(() => undefined);
   await db.query('INSERT INTO user_quiz_state (contact_id) VALUES ($1) ON CONFLICT (contact_id) DO NOTHING', [contact.id]);
+  const resumed = await resendCurrentQuestion(db, contact);
+  if (resumed) {
+    return { sessionId: resumed.id, sessionNumber: null, delivery: 'text', resumed: true };
+  }
+
   const stateResult = await db.query<PlayerState>(
     'SELECT earned_question_ids, completed_sessions FROM user_quiz_state WHERE contact_id = $1',
     [contact.id]
@@ -92,14 +151,24 @@ export async function startSession(db: Database, contact: { id: string; phone: s
       contact.phone,
       `You’ve completed all ${TOTAL_CURRICULUM_QUESTIONS} questions and earned ${totalXp}/${TOTAL_CURRICULUM_XP} XP. Congratulations! You are eligible for a free health checkup.`
     );
-    return;
+    return { sessionId: null, sessionNumber: null, delivery: 'completed', resumed: false };
   }
 
   const sessionId = id();
-  await db.query(
-    "INSERT INTO quiz_sessions (id, contact_id, topic, difficulty, question_ids, status) VALUES ($1, $2, $3, $4, $5, 'active')",
-    [sessionId, contact.id, sessionConfig.topic, 1, JSON.stringify(sessionConfig.questionIds)]
-  );
+  try {
+    await db.query(
+      "INSERT INTO quiz_sessions (id, contact_id, topic, difficulty, question_ids, status) VALUES ($1, $2, $3, $4, $5, 'active')",
+      [sessionId, contact.id, sessionConfig.topic, 1, JSON.stringify(sessionConfig.questionIds)]
+    );
+  } catch (error) {
+    // Lost a simultaneous insert race (partial unique index on active
+    // sessions): resume the winner instead of duplicating.
+    if (error instanceof Error && /duplicate|unique|23505/i.test(error.message)) {
+      const winner = await resendCurrentQuestion(db, contact);
+      if (winner) return { sessionId: winner.id, sessionNumber: null, delivery: 'text', resumed: true };
+    }
+    throw error;
+  }
 
   const quizFlowId = process.env.QUIZ_FLOW_ID;
   if (quizFlowId) {
@@ -119,7 +188,7 @@ export async function startSession(db: Database, contact: { id: string; phone: s
       },
       flowToken: `oshc_quiz_flow:${sessionId}:${contact.id}`,
     });
-    return;
+    return { sessionId, sessionNumber: sessionConfig.sessionNumber, topic: sessionConfig.topic, title: sessionConfig.title, delivery: 'flow', resumed: false };
   }
 
   // Fallback to chat-based informative session + interactive questions
@@ -133,6 +202,11 @@ export async function startSession(db: Database, contact: { id: string; phone: s
     contact.phone,
     `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\nProgress: ${masteredCount}/${TOTAL_CURRICULUM_QUESTIONS} questions mastered (${currentTotalXp}/${TOTAL_CURRICULUM_XP} XP).\n\nReply START when you’re ready for the questions.`
   );
+  return { sessionId, sessionNumber: sessionConfig.sessionNumber, topic: sessionConfig.topic, title: sessionConfig.title, delivery: 'text', resumed: false };
+}
+
+export async function startSession(db: Database, contact: { id: string; phone: string }): Promise<void> {
+  await startQuizForContact(db, contact);
 }
 
 export async function answerQuiz(db: Database, contact: { id: string; phone: string }, text: string): Promise<boolean> {

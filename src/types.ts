@@ -56,6 +56,8 @@ export interface IntentClassification {
   needsClarification: boolean;
   keywords: string[];
   source: 'deterministic' | 'llm' | 'fallback';
+  /** Deterministic rule that produced this classification (for diagnostics). */
+  rule?: string;
 }
 
 export interface KbSource {
