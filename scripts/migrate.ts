@@ -3,6 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
+try {
+  process.loadEnvFile?.();
+} catch {}
+
 const { Pool } = pg;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const connectionString = process.env.DATABASE_URL;

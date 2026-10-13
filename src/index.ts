@@ -1,11 +1,17 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
+
+try {
+  process.loadEnvFile?.();
+} catch {}
 import { handleApi } from './api.js';
 import { createDatabase, type Database } from './db.js';
 import { FlowRegistry } from './flows.js';
 import { json } from './lib.js';
 import { handleWebhook } from './webhook.js';
 import { OshcServiceFlow } from './oshc-flow.js';
+import { OshcQuizFlow } from './quiz/flow.js';
+import { sendWeeklyQuizReminders } from './quiz/service.js';
 
 export interface Runtime {
   db: Database;
@@ -15,6 +21,7 @@ export interface Runtime {
 export function createRuntime(db: Database = createDatabase()): Runtime {
   const flows = new FlowRegistry();
   flows.register(new OshcServiceFlow(db));
+  flows.register(new OshcQuizFlow(db));
   return { db, flows };
 }
 
@@ -28,6 +35,10 @@ export async function handleRequest(request: Request, runtime: Runtime): Promise
 
 export async function start(): Promise<http.Server> {
   const runtime = createRuntime();
+  const sendReminders = (): void => { void sendWeeklyQuizReminders(runtime.db).catch((error) => console.error('Weekly quiz reminders failed', error)); };
+  sendReminders();
+  const reminderTimer = setInterval(sendReminders, 60 * 60 * 1000);
+  reminderTimer.unref();
   const server = http.createServer(async (req, res) => {
     try {
       const request = new Request(`http://${req.headers.host || 'localhost'}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, body: ['GET', 'HEAD'].includes(req.method || '') ? undefined : req as unknown as BodyInit, duplex: 'half' } as RequestInit);

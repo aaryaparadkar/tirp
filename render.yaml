@@ -27,6 +27,10 @@ services:
         value: "https://api.mistral.ai/v1"
       - key: MISTRAL_TIMEOUT_MS
         value: "15000"
+      - key: QUIZ_REMINDER_TEMPLATE
+        sync: false
+      - key: QUIZ_REMINDER_TEMPLATE_LANGUAGE
+        value: en
       - key: DATABASE_SSL
         value: "true"
 

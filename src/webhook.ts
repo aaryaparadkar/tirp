@@ -11,7 +11,8 @@ import { recentTurns, saveTurn } from './conversation.js';
 import { FlowRegistry } from './flows.js';
 
 import { detectLanguage } from './language.js';
-import { id, json, now, verifyHmac } from './lib.js';
+import { id, json, now } from './lib.js';
+import { answerQuiz, handleQuizText } from './quiz/service.js';
 import { chunkForWhatsApp, formatWhatsAppAnswer } from './response-format.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
 
@@ -193,6 +194,12 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
     return;
   }
+
+  // 1b) Quiz mode: explicit QUIZ / START QUIZ starts a session, an active
+  // session consumes answers and YES / START resumes. Emergency already
+  // handled above, so quiz can never block an emergency request.
+  if (await handleQuizText(db, contact, text)) return;
+  if (await answerQuiz(db, contact, text)) return;
 
   // 2) Greeting / menu: first-run gets 5 goals, MENU gets all 9.
   if (isGreeting(text)) {

@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "automate-whatsapp": {
+      "source": "gokapso/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/automate-whatsapp/SKILL.md",
+      "computedHash": "f7bd3c28a0a94879405a2b1715eed40793d6885eafb32cf1d878797e20b3caf9"
+    },
     "caveman": {
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",
@@ -20,6 +26,18 @@
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",
       "computedHash": "2fb5ecec2f71badbd51cdc0ad4a5a4887fd98c2bb36c24f1adcbbeb57f9f1851"
+    },
+    "integrate-whatsapp": {
+      "source": "gokapso/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/integrate-whatsapp/SKILL.md",
+      "computedHash": "ecf4724454523cf33a29f4031e637c4fc690fcd7d549d25638be59c5e7bb9a0d"
+    },
+    "observe-whatsapp": {
+      "source": "gokapso/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/observe-whatsapp/SKILL.md",
+      "computedHash": "dc07c781277bf04e692fb6eb80e52cfb7d11b77a17f63dfec07670ca79dedd47"
     }
   }
 }

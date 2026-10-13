@@ -9,8 +9,10 @@ export interface FlowContext {
 
 export interface FlowDefinition {
   version: string;
-  dataApiVersion: string;
-  routingModel: Record<string, string[]>;
+  data_api_version?: string;
+  dataApiVersion?: string;
+  routing_model?: Record<string, string[]>;
+  routingModel?: Record<string, string[]>;
   screens: Array<Record<string, unknown>>;
 }
 
