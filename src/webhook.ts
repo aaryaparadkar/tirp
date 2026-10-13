@@ -13,7 +13,6 @@ import { FlowRegistry } from './flows.js';
 import { detectLanguage } from './language.js';
 import { id, json, now } from './lib.js';
 import { answerQuiz, handleQuizText } from './quiz/service.js';
-import { chunkForWhatsApp, formatWhatsAppAnswer } from './response-format.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
 
 import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
@@ -158,11 +157,8 @@ async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedL
 
 async function sendAnswer(phoneNumberId: string, to: string, text: string): Promise<void> {
   const kapso = await import('./kapso.js');
-  // Normalize every outbound answer: stable structure, safe emphasis, bounded length.
-  const formatted = formatWhatsAppAnswer(text);
-  for (const c of chunkForWhatsApp(formatted, 1500)) {
-    if (c.trim()) await kapso.sendText(phoneNumberId, to, c);
-  }
+  // Centralized outbound contract: prose reflow, safe emphasis, chunked send.
+  await kapso.sendFormattedText(phoneNumberId, to, text);
 
 }
 

@@ -43,7 +43,15 @@ export function classifierMessages(text: string): ChatMessage[] {
         '"visa_compliance" for student visa health requirements, "waiting_periods" for waiting times, ' +
         '"student_rewards" for rewards/perks, "updates" for news/changes, "forms_and_guides" for forms/PDFs/guides, ' +
         '"support" for contacting a human, "emergency" ONLY for immediate danger/urgent medical help, ' +
-        'otherwise "unknown". confidence is 0-1. keywords is up to 6 lowercase terms (English keywords preferred for retrieval).',
+        'otherwise "unknown". confidence is 0-1. keywords is up to 6 lowercase terms (English keywords preferred for retrieval). ' +
+        'Disambiguation: money-back/payment/refund questions are "reimbursements", not "claims"; ' +
+        'finding a clinic/doctor/nearby/direct-billing is "providers"; ' +
+        'what-to-do-when-sick/fever/symptoms is "healthcare_navigation"; ' +
+        'what-is-included/essentials/comprehensive is "coverage". ' +
+        'For mixed questions pick the dominant action and set needs_clarification true when genuinely ambiguous. ' +
+        'Examples: "Can I claim my hospital bill?" -> claims; "When will I get my money back?" -> reimbursements; ' +
+        '"Find a direct-billing GP near me" -> providers; "I feel sick, what should I do?" -> healthcare_navigation; ' +
+        '"What does Comprehensive cover?" -> coverage; "necesito ayuda urgente" -> emergency; "医院附近哪里有诊所" -> providers.',
     },
     { role: 'user', content: text.slice(0, 1500) },
   ];
@@ -82,10 +90,12 @@ export function answerMessages(
         'RESPONSE CONTRACT (must follow): ' +
         '1) Be sharp and short: max ~600 characters unless safety requires more. ' +
         '2) Start with the direct answer in one line. No greeting, no background preamble. ' +
-        '3) Then at most 3 bullets using "• " for key facts/limits/steps. ' +
+        '3) Write explanations as natural prose paragraphs — join related sentences with spaces, ' +
+        'never one sentence per line. Use at most 3 bullets with "• " ONLY for genuine lists ' +
+        '(steps, limits, options). ' +
         '4) Use WhatsApp formatting only: *bold* for key terms, actions, limits, numbers, warnings; _italic_ sparingly. ' +
         'Never use # headings, tables, or **double-asterisk** bold. Never emit internal markers like [S1]. ' +
-        '5) One idea per line; blank line between sections; no 3+ blank lines. ' +
+        '5) Blank line between paragraphs/sections only; no blank line between every sentence; no 3+ blank lines. ' +
         '6) End with exactly one next step ("*Next step:* reply X / call Y / open Z"). Ask at most one clarifying question. ' +
         '7) End with "Sources:" (or 资料来源： / Fuentes:) followed only by source URLs you actually used (max 2). ' +
         'If sources are insufficient, say what is missing in one line and direct the user to Medibank OSHC support (134 148 / https://www.medibankoshc.com.au/contact-us/). ' +
