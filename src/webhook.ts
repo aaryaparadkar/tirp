@@ -215,21 +215,21 @@ async function handleText(
     const direct = staticAnswerFor(menuIntent, text, lang);
     if (direct) {
       await sendAnswer(phoneId, contact.phone, direct.text);
-      await saveTurn(db, contact.id, 'outbound', direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, language: lang });
+      await saveTurn(db, contact.id, 'outbound', direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, sourceUrls: direct.sourceUrls, language: lang });
       return;
     }
     // Otherwise fall through to retrieval with the menu intent.
     const history = await recentTurns(db, contact.id);
     const ans = await answerWithSources(text, { intent: menuIntent, confidence: 1, needsClarification: false, keywords: [], source: 'deterministic' }, { history, language: lang });
     await sendAnswer(phoneId, contact.phone, ans.text);
-    await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, llmModel: ans.model, language: lang });
+    await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, sourceUrls: ans.sourceUrls, llmModel: ans.model, language: lang });
     return;
   }
   // 4) SUPPORT keyword fast-path (multilingual).
   if (isSupportKeyword(text)) {
     const s = staticAnswerFor('support', text, lang)!;
     await sendAnswer(phoneId, contact.phone, s.text);
-    await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds, language: lang });
+    await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds, sourceUrls: s.sourceUrls, language: lang });
     return;
   }
   // 5) LLM classification + grounded answer.
@@ -246,6 +246,7 @@ async function handleText(
   await saveTurn(db, contact.id, 'outbound', ans.text, {
     intent: ans.intent,
     sourceIds: ans.sourceIds,
+    sourceUrls: ans.sourceUrls,
     llmModel: ans.model,
     latencyMs: Date.now() - started,
     language: lang,

@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Database } from './db.js';
-import { isE164, json, readJson } from './lib.js';
+import { json, normalizePhone, readJson } from './lib.js';
 import { ensureContact, listCategories, listServices } from './catalogue.js';
 import { startQuizForContact } from './quiz/service.js';
-import { checkRateLimit } from './rate-limit.js';
+import { checkSharedRateLimit, rateLimitKey } from './dashboard/rate-limit.js';
 
 function bearerToken(request: Request): string | null {
   const header = request.headers.get('authorization');
@@ -18,15 +18,6 @@ function tokensEqual(provided: string, expected: string): boolean {
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
-}
-
-function normalizePhone(input: unknown): string | null {
-  if (typeof input !== 'string') return null;
-  const cleaned = input.trim().replace(/[\s\-().]/g, '');
-  if (isE164(cleaned)) return cleaned;
-  // Tolerate clients that omit the leading '+'.
-  if (/^[1-9]\d{7,14}$/.test(cleaned)) return `+${cleaned}`;
-  return null;
 }
 
 async function handleQuizStart(request: Request, db: Database): Promise<Response> {
@@ -49,7 +40,11 @@ async function handleQuizStart(request: Request, db: Database): Promise<Response
   if (!phone) {
     return json({ error: 'phone must be an E.164 number like +61400000000' }, 422);
   }
-  if (!checkRateLimit(`quiz-start:${phone}`, { windowMs: 60_000, max: 5 })) {
+  const rate = await checkSharedRateLimit(db, rateLimitKey('quiz-start', phone), {
+    windowMs: 60_000,
+    max: 5,
+  });
+  if (!rate.allowed) {
     return json({ error: 'Rate limit exceeded, try again shortly' }, 429);
   }
   let contact;

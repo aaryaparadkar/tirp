@@ -1,6 +1,8 @@
 import type { Database } from './db.js';
-import { id, now } from './lib.js';
+import { errorMessage, id, now } from './lib.js';
 import type { ConversationTurn, Intent } from './types.js';
+import { KB_SOURCES } from './kb/sources.js';
+import { recordConversationTurn } from './dashboard/repository.js';
 
 export async function ensureConversationTable(db: Database): Promise<void> {
   // Idempotent for local/tunnel testing without running full migrations.
@@ -24,25 +26,81 @@ export async function ensureConversationTable(db: Database): Promise<void> {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_conversation_contact ON conversation_messages(contact_id, created_at)`);
 }
 
+export interface SaveTurnOptions {
+  waMessageId?: string;
+  messageType?: string;
+  intent?: Intent | string;
+  sourceIds?: string[];
+  sourceUrls?: string[];
+  llmModel?: string;
+  llmKeySlot?: number;
+  latencyMs?: number;
+  errorCode?: string;
+  language?: string;
+}
+
+/** Resolve knowledge-base sources to `{ id, title, url }` for storage. */
+function toSourceRefs(
+  ids: string[] | undefined,
+  urls: string[] | undefined,
+): { id: string; title: string; url: string }[] {
+  const byFile = new Map(KB_SOURCES.map((source) => [source.file, source]));
+  const refs: { id: string; title: string; url: string }[] = [];
+  (ids || []).forEach((sourceId, index) => {
+    const match = byFile.get(sourceId);
+    const url = (urls || [])[index] || match?.url || '';
+    if (!url) return;
+    refs.push({
+      id: sourceId,
+      title: match?.title ?? sourceId.replace(/\.md$/, ''),
+      url,
+    });
+  });
+  (urls || []).slice((ids || []).length).forEach((url) => {
+    if (url) refs.push({ id: url, title: 'Source', url });
+  });
+  return refs;
+}
+
+let warnedLegacyInsert = false;
+
 export async function saveTurn(
   db: Database,
   contactId: string,
   direction: 'inbound' | 'outbound',
   body: string,
-  opts: {
-    waMessageId?: string;
-    messageType?: string;
-    intent?: Intent | string;
-    sourceIds?: string[];
-    llmModel?: string;
-    llmKeySlot?: number;
-    latencyMs?: number;
-    errorCode?: string;
-    language?: string;
-  } = {},
+  opts: SaveTurnOptions = {},
 ): Promise<void> {
   try {
     await ensureConversationTable(db);
+    try {
+      await recordConversationTurn(db, {
+        contactId,
+        direction,
+        body,
+        messageType: opts.messageType || 'text',
+        intent: opts.intent || null,
+        sourceIds: opts.sourceIds || [],
+        sourceUrls: toSourceRefs(opts.sourceIds, opts.sourceUrls),
+        llmModel: opts.llmModel || null,
+        llmKeySlot: typeof opts.llmKeySlot === 'number' ? opts.llmKeySlot : null,
+        latencyMs: typeof opts.latencyMs === 'number' ? opts.latencyMs : null,
+        errorCode: opts.errorCode || null,
+        language: opts.language || null,
+        waMessageId: opts.waMessageId,
+        channel: direction === 'inbound' ? 'contact' : 'assistant',
+        authorType: direction === 'inbound' ? 'contact' : 'assistant',
+      });
+      return;
+    } catch (error) {
+      if (!warnedLegacyInsert) {
+        warnedLegacyInsert = true;
+        console.warn(
+          'conversation-aware persistence unavailable; using legacy insert',
+          errorMessage(error),
+        );
+      }
+    }
     try {
       await db.query(
         `INSERT INTO conversation_messages
