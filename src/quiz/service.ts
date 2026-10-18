@@ -10,6 +10,10 @@ import {
   TOTAL_CURRICULUM_XP,
   TOTAL_CURRICULUM_SESSIONS,
 } from './curriculum.js';
+import { canonicalFlowSessionNumber, resolvedQuizFlowId } from './flow-definition.js';
+
+/** Warn at most once that a Flow-configured environment is on a text session. */
+let warnedFlowScope = false;
 
 type PlayerState = { earned_question_ids: string[]; completed_sessions: number };
 
@@ -170,25 +174,42 @@ export async function startQuizForContact(
     throw error;
   }
 
-  const quizFlowId = process.env.QUIZ_FLOW_ID;
-  if (quizFlowId) {
-    // Send as interactive WhatsApp Flow if a published Flow ID is configured
+  // Deliver the interactive Flow only when a real Flow ID is configured AND the
+  // published JSON encodes this session. The canonical Flow carries one fixed
+  // five-question session; later sessions fall back to text.
+  const quizFlowId = resolvedQuizFlowId();
+  const flowEncodesThisSession = sessionConfig.sessionNumber === canonicalFlowSessionNumber();
+  if (quizFlowId && flowEncodesThisSession) {
     const { sendFlow } = await import('../kapso.js');
-    await sendFlow({
-      phoneNumberId: catalogueConfig.phoneNumberId,
-      to: contact.phone,
-      flowId: quizFlowId,
-      bodyText: `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\nTap below to take your 5-question quiz!`,
-      flowCta: 'Start Learning & Quiz',
-      screen: 'LESSON',
-      data: {
-        session_id: sessionId,
-        topic_title: sessionConfig.title,
-        lesson_text: sessionConfig.lesson,
-      },
-      flowToken: `oshc_quiz_flow:${sessionId}:${contact.id}`,
-    });
+    try {
+      await sendFlow({
+        phoneNumberId: catalogueConfig.phoneNumberId,
+        to: contact.phone,
+        flowId: quizFlowId,
+        bodyText: `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\nTap below to take your 5-question quiz!`,
+        flowCta: 'Start Learning & Quiz',
+        screen: 'LESSON',
+        data: {
+          session_id: sessionId,
+          topic_title: sessionConfig.title,
+          lesson_text: sessionConfig.lesson,
+        },
+        flowToken: `oshc_quiz_flow:${sessionId}:${contact.id}`,
+      });
+    } catch (error) {
+      // Roll back the placeholder session so a retry starts cleanly instead of
+      // resuming a Flow-less text session on the next trigger.
+      await db.query('DELETE FROM quiz_sessions WHERE id = $1', [sessionId]).catch(() => undefined);
+      throw error;
+    }
     return { sessionId, sessionNumber: sessionConfig.sessionNumber, topic: sessionConfig.topic, title: sessionConfig.title, delivery: 'flow', resumed: false };
+  }
+
+  if (quizFlowId && !flowEncodesThisSession && !warnedFlowScope) {
+    warnedFlowScope = true;
+    console.warn(
+      `[quiz] QUIZ_FLOW_ID is set but the published Flow encodes session ${canonicalFlowSessionNumber()} only; session ${sessionConfig.sessionNumber} is delivered as text.`,
+    );
   }
 
   // Fallback to chat-based informative session + interactive questions

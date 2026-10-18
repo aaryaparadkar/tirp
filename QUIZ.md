@@ -5,12 +5,14 @@ Users can reply `QUIZ` to opt in and start. Each session begins with an informat
 ## Key Features
 
 1. **WhatsApp Flow Integration**:
-   - The session can be rendered natively inside WhatsApp as an interactive **WhatsApp Flow** (`OshcQuizFlow`).
+   - The session is rendered natively inside WhatsApp as an interactive **WhatsApp Flow** (`OshcQuizFlow`).
    - **Screen 1 (`LESSON`)**: Informative learning session detailing primary care, emergencies, medicines, claims, or policies.
-   - **Screen 2 (`QUIZ`)**: Interactive multiple-choice form (RadioButtons) with questions and options A–D.
+   - **Screens 2..N (`QUESTION_ONE`..`QUESTION_FIVE`)**: One interactive multiple-choice screen per question, collecting `q_one`..`q_five`.
+   - **Screen N+1 (`RESULTS`)**: Answer review plus a single `complete` payload carrying every answer back to the webhook.
    - Submissions are received automatically, graded against the question bank, and awarded XP.
-   - The standalone Meta Flow JSON is available at `flows/oshc_quiz_flow.json`.
-   - To activate the flow on WhatsApp, set `QUIZ_FLOW_ID` in `.env` to the published flow ID. If omitted, the bot smoothly falls back to interactive text chat so testing always works.
+   - **Single source of truth**: the whole Flow lives in one file, `flows/oshc_quiz_flow.json`. Import that file into Kapso (**WhatsApp → Flows → create/import → assign phone number → Publish**) and set `QUIZ_FLOW_ID` to the published Meta Flow ID. Edit the Flow with `npm run flow:export`; `npm run flow:check` and `tests/quiz-flow.test.ts` fail if the committed file drifts from the generator.
+   - **Scope**: the published JSON encodes one fixed five-question session (curriculum session 1). Later sessions are delivered as text until their own Flow is published. A configured-but-placeholder `QUIZ_FLOW_ID` (for example `replace-with-...`) is ignored in favour of the text fallback.
+   - If `QUIZ_FLOW_ID` is unset, the bot smoothly falls back to interactive text chat so testing always works.
 
 2. **Deterministic Sequence & Zero Repetition**:
    - The curriculum is standardized across 7 sessions covering all 32 questions in `src/quiz/curriculum.ts`.
@@ -52,5 +54,8 @@ curl -X POST https://<service>/quiz/start \
   (enforced by a partial unique index, migration `0005`).
 - Rate-limited to 5 triggers per phone per minute.
 - Response: `{"ok": true, "phone": "...", "session": 1, "resumed": false, "delivery": "flow"|"text"|"completed"}`.
-- Set `QUIZ_FLOW_ID` to deliver the interactive Flow; otherwise the bot
-  falls back to text chat.
+- Set `QUIZ_FLOW_ID` to the published Flow ID (from `flows/oshc_quiz_flow.json`) to
+  deliver the interactive Flow; otherwise the bot falls back to text chat.
+- If Flow delivery fails, the placeholder session is rolled back and the
+  request returns an error, so a retry starts cleanly instead of resuming a
+  Flow-less text session.

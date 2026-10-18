@@ -1,24 +1,49 @@
-import fs from 'fs';
-import path from 'path';
-import { OshcQuizFlow } from '../src/quiz/flow.js';
-import { QUIZ_CURRICULUM } from '../src/quiz/curriculum.js';
+/**
+ * Writes the single canonical WhatsApp Flow JSON that operators import into
+ * Kapso: `flows/oshc_quiz_flow.json`.
+ *
+ * Run this after editing the curriculum so the published artifact and the
+ * grading code stay in sync. `tests/quiz-flow.test.ts` fails if the committed
+ * file diverges from the generator.
+ *
+ * `--check` verifies the committed file without writing (used by CI / `npm run
+ * flow:check`).
+ */
 
-const flow = new OshcQuizFlow({} as any);
+import fs from "node:fs";
 
-// 1. Export main flow (Session 1 default)
-const mainDefinition = flow.definition(0);
-const mainOutputPath = path.resolve('flows/oshc_quiz_flow.json');
-fs.mkdirSync(path.dirname(mainOutputPath), { recursive: true });
-fs.writeFileSync(mainOutputPath, JSON.stringify(mainDefinition, null, 2) + '\n', 'utf8');
-console.log(`Exported main flow -> ${mainOutputPath}`);
+import {
+  CANONICAL_QUIZ_FLOW_PATH,
+  buildQuizFlowDefinition,
+  canonicalFlowSessionNumber,
+  serializeQuizFlow,
+} from "../src/quiz/flow-definition.js";
 
-// 2. Export individual flows for all 7 sessions
-const sessionsDir = path.resolve('flows/sessions');
-fs.mkdirSync(sessionsDir, { recursive: true });
+const check = process.argv.includes("--check");
+const expected = serializeQuizFlow();
 
-QUIZ_CURRICULUM.forEach((curriculumSession, idx) => {
-  const sessionDef = flow.definition(idx);
-  const sessionPath = path.join(sessionsDir, `session_${idx + 1}.json`);
-  fs.writeFileSync(sessionPath, JSON.stringify(sessionDef, null, 2) + '\n', 'utf8');
-  console.log(`Exported Session ${idx + 1} (${curriculumSession.title}) -> ${sessionPath}`);
-});
+if (check) {
+  let actual = "";
+  try {
+    actual = fs.readFileSync(CANONICAL_QUIZ_FLOW_PATH, "utf8");
+  } catch {
+    console.error(`Missing Flow JSON: ${CANONICAL_QUIZ_FLOW_PATH}`);
+    process.exit(1);
+  }
+  if (actual !== expected) {
+    console.error(
+      `Flow JSON is out of date: ${CANONICAL_QUIZ_FLOW_PATH}\nRun "npm run flow:export" and commit the result.`,
+    );
+    process.exit(1);
+  }
+  console.log(`Flow JSON is up to date: ${CANONICAL_QUIZ_FLOW_PATH}`);
+  process.exit(0);
+}
+
+fs.mkdirSync(new URL("../flows/", import.meta.url), { recursive: true });
+fs.writeFileSync(CANONICAL_QUIZ_FLOW_PATH, expected, "utf8");
+
+const definition = buildQuizFlowDefinition();
+console.log(
+  `Exported quiz Flow (session ${canonicalFlowSessionNumber()}, ${definition.screens.length} screens) -> ${CANONICAL_QUIZ_FLOW_PATH}`,
+);

@@ -1,84 +1,179 @@
-import { describe, expect, it, vi } from 'vitest';
-import { OshcQuizFlow } from '../src/quiz/flow.js';
-import type { Database } from '../src/db.js';
+import { readFileSync } from "node:fs";
 
-vi.mock('../src/kapso.js', () => ({
-  sendText: vi.fn().mockResolvedValue({ message_id: 'mock-id' }),
-  sendFlow: vi.fn().mockResolvedValue({ message_id: 'mock-flow-id' }),
+import { describe, expect, it, vi } from "vitest";
+import { OshcQuizFlow } from "../src/quiz/flow.js";
+import {
+  CANONICAL_QUIZ_FLOW_PATH,
+  buildQuizFlowDefinition,
+  canonicalFlowSessionNumber,
+  serializeQuizFlow,
+} from "../src/quiz/flow-definition.js";
+import { QUIZ_CURRICULUM } from "../src/quiz/curriculum.js";
+import type { Database } from "../src/db.js";
+
+vi.mock("../src/kapso.js", () => ({
+  sendText: vi.fn().mockResolvedValue({ message_id: "mock-id" }),
+  sendFlow: vi.fn().mockResolvedValue({ message_id: "mock-flow-id" }),
   createKapsoClient: vi.fn(),
 }));
 
-describe('OshcQuizFlow WhatsApp Flow', () => {
-  it('defines valid Meta Flow v7.3 multi-screen structure with individual question screens and results screen', () => {
-    const mockDb: Database = { query: vi.fn(), close: vi.fn() };
-    const flow = new OshcQuizFlow(mockDb);
+const QUESTION_COUNT = QUIZ_CURRICULUM[0].questionIds.length;
 
-    expect(flow.name).toBe('oshc_quiz_flow');
-    const def = flow.definition(0);
+describe("quiz Flow definition", () => {
+  it("builds a valid Meta Flow v7.3 multi-screen structure", () => {
+    const def = buildQuizFlowDefinition(0);
 
-    expect(def.version).toBe('7.3');
-    expect(def.routing_model || def.routingModel).toEqual({
-      LESSON: ['QUESTION_1'],
-      QUESTION_1: ['QUESTION_2'],
-      QUESTION_2: ['QUESTION_3'],
-      QUESTION_3: ['QUESTION_4'],
-      QUESTION_4: ['QUESTION_5'],
-      QUESTION_5: ['RESULTS'],
+    expect(def.version).toBe("7.3");
+    expect(def.routing_model).toEqual({
+      LESSON: ["QUESTION_ONE"],
+      QUESTION_ONE: ["QUESTION_TWO"],
+      QUESTION_TWO: ["QUESTION_THREE"],
+      QUESTION_THREE: ["QUESTION_FOUR"],
+      QUESTION_FOUR: ["QUESTION_FIVE"],
+      QUESTION_FIVE: ["RESULTS"],
       RESULTS: [],
     });
 
-    // 1 lesson screen + 5 question screens + 1 results screen = 7 screens
-    expect(def.screens.length).toBe(7);
+    // 1 lesson + N question screens + 1 results screen
+    expect(def.screens.length).toBe(QUESTION_COUNT + 2);
+    expect(def.screens[0].id).toBe("LESSON");
+    expect(def.screens[0].terminal).toBe(false);
 
-    const lessonScreen = def.screens[0];
-    expect(lessonScreen.id).toBe('LESSON');
-    expect(lessonScreen.terminal).toBe(false);
-
-    for (let i = 1; i <= 5; i++) {
-      const qScreen = def.screens[i];
-      expect(qScreen.id).toBe(`QUESTION_${i}`);
-      expect(qScreen.terminal).toBe(false);
+    for (let i = 1; i <= QUESTION_COUNT; i++) {
+      expect(def.screens[i].id).toBe(
+        `QUESTION_${["ONE", "TWO", "THREE", "FOUR", "FIVE"][i - 1]}`,
+      );
+      expect(def.screens[i].terminal).toBe(false);
     }
 
-    const resultsScreen = def.screens[6];
-    expect(resultsScreen.id).toBe('RESULTS');
+    const resultsScreen = def.screens[def.screens.length - 1];
+    expect(resultsScreen.id).toBe("RESULTS");
     expect(resultsScreen.terminal).toBe(true);
   });
 
-  it('accepts both explicit flowName and correlated flowToken', () => {
+  it("collects identifier-safe answers and carries them in the complete payload", () => {
+    const def = buildQuizFlowDefinition(0);
+    const names: string[] = [];
+    for (let i = 1; i <= QUESTION_COUNT; i++) {
+      names.push(`q_${["one", "two", "three", "four", "five"][i - 1]}`);
+    }
+
+    const questionScreens = def.screens.slice(1, 1 + QUESTION_COUNT);
+    const collected = questionScreens.map((screen) => {
+      const children = (
+        screen.layout as { children: Array<Record<string, unknown>> }
+      ).children;
+      const radio = children.find(
+        (child) => child.type === "RadioButtonsGroup",
+      );
+      return radio?.name;
+    });
+    expect(collected).toEqual(names);
+
+    const resultsChildren = (
+      def.screens[def.screens.length - 1].layout as {
+        children: Array<Record<string, unknown>>;
+      }
+    ).children;
+    const footer = resultsChildren.find((child) => child.type === "Footer") as {
+      "on-click-action": { name: string; payload: Record<string, string> };
+    };
+    expect(footer["on-click-action"].name).toBe("complete");
+    expect(Object.keys(footer["on-click-action"].payload)).toEqual(names);
+  });
+
+  it("keeps the committed JSON identical to the generator", () => {
+    const committed = readFileSync(CANONICAL_QUIZ_FLOW_PATH, "utf8");
+    expect(committed).toBe(serializeQuizFlow());
+  });
+
+  it("loads the published Flow JSON as the single source of truth", () => {
+    const flow = new OshcQuizFlow({
+      query: vi.fn(),
+      close: vi.fn(),
+    } as unknown as Database);
+    expect(flow.name).toBe("oshc_quiz_flow");
+    expect(flow.definition()).toEqual(buildQuizFlowDefinition());
+  });
+
+  it("publishes the canonical session number", () => {
+    expect(canonicalFlowSessionNumber()).toBe(QUIZ_CURRICULUM[0].sessionNumber);
+  });
+});
+
+describe("OshcQuizFlow submissions", () => {
+  it("accepts both explicit flowName and correlated flowToken", () => {
     const mockDb: Database = { query: vi.fn(), close: vi.fn() };
     const flow = new OshcQuizFlow(mockDb);
 
-    expect(flow.accepts({ flowName: 'oshc_quiz_flow' }, { phone: '+15551234567', data: {} })).toBe(true);
-    expect(flow.accepts({ flowName: 'flow', flowToken: 'oshc_quiz_flow:sess123:user456' }, { phone: '+15551234567', data: {} })).toBe(true);
-    expect(flow.accepts({ flowName: 'other_flow' }, { phone: '+15551234567', data: {} })).toBe(false);
+    expect(
+      flow.accepts(
+        { flowName: "oshc_quiz_flow" },
+        { phone: "+15551234567", data: {} },
+      ),
+    ).toBe(true);
+    expect(
+      flow.accepts(
+        { flowName: "flow", flowToken: "oshc_quiz_flow:sess123:user456" },
+        { phone: "+15551234567", data: {} },
+      ),
+    ).toBe(true);
+    expect(
+      flow.accepts(
+        { flowName: "other_flow" },
+        { phone: "+15551234567", data: {} },
+      ),
+    ).toBe(false);
   });
 
-  it('grades submitted answers, updates XP, and completes session', async () => {
+  it("grades submitted answers, updates XP, and completes session", async () => {
     const queries: Array<{ text: string; values?: unknown[] }> = [];
     const mockDb: Database = {
       query: vi.fn(async (text: string, values?: unknown[]) => {
         queries.push({ text, values });
-        // Return mock active session
-        if (text.includes("FROM quiz_sessions WHERE contact_id = $1 AND status = 'active'")) {
+        if (
+          text.includes(
+            "FROM quiz_sessions WHERE contact_id = $1 AND status = 'active'",
+          )
+        ) {
           return {
             rowCount: 1,
             rows: [
               {
-                id: 'sess-test',
-                question_ids: ['find_hc_1', 'find_hc_2', 'find_hc_3', 'find_hc_4', 'find_hc_5'],
+                id: "sess-test",
+                question_ids: [
+                  "find_hc_1",
+                  "find_hc_2",
+                  "find_hc_3",
+                  "find_hc_4",
+                  "find_hc_5",
+                ],
                 earned_xp: 0,
               },
             ],
           } as any;
         }
-        // Return mock user state before
-        if (text.includes('SELECT earned_question_ids FROM user_quiz_state WHERE contact_id = $1')) {
+        if (
+          text.includes(
+            "SELECT earned_question_ids FROM user_quiz_state WHERE contact_id = $1",
+          )
+        ) {
           return { rowCount: 1, rows: [{ earned_question_ids: [] }] } as any;
         }
-        // Return mock user state after
-        if (text.includes('SELECT earned_question_ids, completed_sessions FROM user_quiz_state WHERE contact_id = $1')) {
-          return { rowCount: 1, rows: [{ earned_question_ids: ['find_hc_1', 'find_hc_2'], completed_sessions: 1 }] } as any;
+        if (
+          text.includes(
+            "SELECT earned_question_ids, completed_sessions FROM user_quiz_state WHERE contact_id = $1",
+          )
+        ) {
+          return {
+            rowCount: 1,
+            rows: [
+              {
+                earned_question_ids: ["find_hc_1", "find_hc_2"],
+                completed_sessions: 1,
+              },
+            ],
+          } as any;
         }
         return { rowCount: 1, rows: [] } as any;
       }),
@@ -87,32 +182,36 @@ describe('OshcQuizFlow WhatsApp Flow', () => {
 
     const flow = new OshcQuizFlow(mockDb);
 
-    // find_hc_1 correct is 'b', find_hc_2 correct is 'b', find_hc_3 correct is 'a', find_hc_4 correct is 'b', find_hc_5 correct is 'a'
     const submission = {
-      flowName: 'oshc_quiz_flow',
-      q1: 'b', // correct
-      q2: 'b', // correct
-      q3: 'wrong', // incorrect
-      q4: 'wrong', // incorrect
-      q5: 'wrong', // incorrect
+      flowName: "oshc_quiz_flow",
+      q_one: "option_b",
+      q_two: "option_b",
+      q_three: "wrong",
+      q_four: "wrong",
+      q_five: "wrong",
     };
 
     await flow.handle(submission, {
-      phone: '+15551234567',
-      contactId: 'contact-test',
+      phone: "+15551234567",
+      contactId: "contact-test",
       data: submission,
     });
 
-    // Check that submissions were inserted
-    expect(queries.some((q) => q.text.includes('INSERT INTO flow_submissions'))).toBe(true);
-
-    // Check that user_quiz_state earned questions were updated
-    expect(queries.some((q) => q.text.includes('UPDATE user_quiz_state SET earned_question_ids'))).toBe(true);
-
-    // Check that completed_sessions was incremented
-    expect(queries.some((q) => q.text.includes('completed_sessions = completed_sessions + 1'))).toBe(true);
-
-    // Check that quiz_sessions was completed
-    expect(queries.some((q) => q.text.includes("status = 'completed'"))).toBe(true);
+    expect(
+      queries.some((q) => q.text.includes("INSERT INTO flow_submissions")),
+    ).toBe(true);
+    expect(
+      queries.some((q) =>
+        q.text.includes("UPDATE user_quiz_state SET earned_question_ids"),
+      ),
+    ).toBe(true);
+    expect(
+      queries.some((q) =>
+        q.text.includes("completed_sessions = completed_sessions + 1"),
+      ),
+    ).toBe(true);
+    expect(queries.some((q) => q.text.includes("status = 'completed'"))).toBe(
+      true,
+    );
   });
 });

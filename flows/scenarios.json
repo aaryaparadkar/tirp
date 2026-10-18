@@ -12,52 +12,52 @@
         {
           "submit": true,
           "expect": {
-            "screen": "QUESTION_1"
+            "screen": "QUESTION_ONE"
           }
         },
         {
-          "fill": "q1",
-          "value": "b"
+          "fill": "q_one",
+          "value": "option_b"
         },
         {
           "submit": true,
           "expect": {
-            "screen": "QUESTION_2"
+            "screen": "QUESTION_TWO"
           }
         },
         {
-          "fill": "q2",
-          "value": "b"
+          "fill": "q_two",
+          "value": "option_b"
         },
         {
           "submit": true,
           "expect": {
-            "screen": "QUESTION_3"
+            "screen": "QUESTION_THREE"
           }
         },
         {
-          "fill": "q3",
-          "value": "a"
+          "fill": "q_three",
+          "value": "option_a"
         },
         {
           "submit": true,
           "expect": {
-            "screen": "QUESTION_4"
+            "screen": "QUESTION_FOUR"
           }
         },
         {
-          "fill": "q4",
-          "value": "a"
+          "fill": "q_four",
+          "value": "option_a"
         },
         {
           "submit": true,
           "expect": {
-            "screen": "QUESTION_5"
+            "screen": "QUESTION_FIVE"
           }
         },
         {
-          "fill": "q5",
-          "value": "a"
+          "fill": "q_five",
+          "value": "option_a"
         },
         {
           "submit": true,
@@ -70,11 +70,11 @@
           "expect": {
             "status": "completed",
             "completion": {
-              "q1": "b",
-              "q2": "b",
-              "q3": "a",
-              "q4": "a",
-              "q5": "a"
+              "q_one": "option_b",
+              "q_two": "option_b",
+              "q_three": "option_a",
+              "q_four": "option_a",
+              "q_five": "option_a"
             }
           }
         }

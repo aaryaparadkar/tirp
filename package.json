@@ -14,6 +14,7 @@
     "start": "tsx src/index.ts",
     "migrate": "tsx scripts/migrate.ts",
     "flow:export": "tsx scripts/export-flow.ts",
+    "flow:check": "tsx scripts/export-flow.ts --check",
     "flow:validate": "flowso validate flows/oshc_quiz_flow.json",
     "flow:test": "flowso test flows/oshc_quiz_flow.json --scenario flows/scenarios.json",
     "flow:preview": "flowso preview flows/oshc_quiz_flow.json",

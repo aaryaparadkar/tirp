@@ -2,21 +2,21 @@
   "version": "7.3",
   "routing_model": {
     "LESSON": [
-      "QUESTION_1"
+      "QUESTION_ONE"
     ],
-    "QUESTION_1": [
-      "QUESTION_2"
+    "QUESTION_ONE": [
+      "QUESTION_TWO"
     ],
-    "QUESTION_2": [
-      "QUESTION_3"
+    "QUESTION_TWO": [
+      "QUESTION_THREE"
     ],
-    "QUESTION_3": [
-      "QUESTION_4"
+    "QUESTION_THREE": [
+      "QUESTION_FOUR"
     ],
-    "QUESTION_4": [
-      "QUESTION_5"
+    "QUESTION_FOUR": [
+      "QUESTION_FIVE"
     ],
-    "QUESTION_5": [
+    "QUESTION_FIVE": [
       "RESULTS"
     ],
     "RESULTS": []
@@ -49,7 +49,7 @@
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUESTION_1"
+                "name": "QUESTION_ONE"
               }
             }
           }
@@ -57,7 +57,7 @@
       }
     },
     {
-      "id": "QUESTION_1",
+      "id": "QUESTION_ONE",
       "title": "Question 1 of 5",
       "terminal": false,
       "layout": {
@@ -77,27 +77,27 @@
           },
           {
             "type": "RadioButtonsGroup",
-            "name": "q1",
+            "name": "q_one",
             "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
-                "id": "a",
+                "id": "option_a",
                 "title": "Option A",
                 "description": "Go directly to a major hospital emergency department"
               },
               {
-                "id": "b",
+                "id": "option_b",
                 "title": "Option B",
                 "description": "Book an appointment with a General Practitioner (GP)"
               },
               {
-                "id": "c",
+                "id": "option_c",
                 "title": "Option C",
                 "description": "Wait for symptoms to disappear before starting classes"
               },
               {
-                "id": "d",
+                "id": "option_d",
                 "title": "Option D",
                 "description": "Call emergency services (000) for ambulance transport"
               }
@@ -110,7 +110,7 @@
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUESTION_2"
+                "name": "QUESTION_TWO"
               }
             }
           }
@@ -118,7 +118,7 @@
       }
     },
     {
-      "id": "QUESTION_2",
+      "id": "QUESTION_TWO",
       "title": "Question 2 of 5",
       "terminal": false,
       "layout": {
@@ -138,27 +138,27 @@
           },
           {
             "type": "RadioButtonsGroup",
-            "name": "q2",
+            "name": "q_two",
             "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
-                "id": "a",
+                "id": "option_a",
                 "title": "Option A",
                 "description": "Turn up at a private specialist clinic without an appointment"
               },
               {
-                "id": "b",
+                "id": "option_b",
                 "title": "Option B",
                 "description": "Consult a GP first to obtain an official referral letter"
               },
               {
-                "id": "c",
+                "id": "option_c",
                 "title": "Option C",
                 "description": "Apply directly to Medicare for special overseas approval"
               },
               {
-                "id": "d",
+                "id": "option_d",
                 "title": "Option D",
                 "description": "Request permission from the Department of Home Affairs"
               }
@@ -171,7 +171,7 @@
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUESTION_3"
+                "name": "QUESTION_THREE"
               }
             }
           }
@@ -179,7 +179,7 @@
       }
     },
     {
-      "id": "QUESTION_3",
+      "id": "QUESTION_THREE",
       "title": "Question 3 of 5",
       "terminal": false,
       "layout": {
@@ -199,27 +199,27 @@
           },
           {
             "type": "RadioButtonsGroup",
-            "name": "q3",
+            "name": "q_three",
             "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
-                "id": "a",
+                "id": "option_a",
                 "title": "Option A",
                 "description": "A medical practice in your OSHC insurer’s direct billing network"
               },
               {
-                "id": "b",
+                "id": "option_b",
                 "title": "Option B",
                 "description": "A boutique private surgical hospital offering elective procedures"
               },
               {
-                "id": "c",
+                "id": "option_c",
                 "title": "Option C",
                 "description": "A public hospital emergency department during normal clinic hours"
               },
               {
-                "id": "d",
+                "id": "option_d",
                 "title": "Option D",
                 "description": "An unregistered community wellness clinic outside the health system"
               }
@@ -232,7 +232,7 @@
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUESTION_4"
+                "name": "QUESTION_FOUR"
               }
             }
           }
@@ -240,7 +240,7 @@
       }
     },
     {
-      "id": "QUESTION_4",
+      "id": "QUESTION_FOUR",
       "title": "Question 4 of 5",
       "terminal": false,
       "layout": {
@@ -260,27 +260,27 @@
           },
           {
             "type": "RadioButtonsGroup",
-            "name": "q4",
+            "name": "q_four",
             "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
-                "id": "a",
+                "id": "option_a",
                 "title": "Option A",
                 "description": "Online Doctor consultations for 24/7 video or phone appointments"
               },
               {
-                "id": "b",
+                "id": "option_b",
                 "title": "Option B",
                 "description": "Automatic emergency prescription delivery through state hospitals"
               },
               {
-                "id": "c",
+                "id": "option_c",
                 "title": "Option C",
                 "description": "An online tool that lets students self-issue medical sick certificates"
               },
               {
-                "id": "d",
+                "id": "option_d",
                 "title": "Option D",
                 "description": "A government portal that reimburses taxi travel to hospital clinics"
               }
@@ -293,7 +293,7 @@
               "name": "navigate",
               "next": {
                 "type": "screen",
-                "name": "QUESTION_5"
+                "name": "QUESTION_FIVE"
               }
             }
           }
@@ -301,7 +301,7 @@
       }
     },
     {
-      "id": "QUESTION_5",
+      "id": "QUESTION_FIVE",
       "title": "Question 5 of 5",
       "terminal": false,
       "layout": {
@@ -321,27 +321,27 @@
           },
           {
             "type": "RadioButtonsGroup",
-            "name": "q5",
+            "name": "q_five",
             "label": "Select your answer:",
             "required": true,
             "data-source": [
               {
-                "id": "a",
+                "id": "option_a",
                 "title": "Option A",
                 "description": "The National Health Services Directory via Healthdirect or your OSHC provider"
               },
               {
-                "id": "b",
+                "id": "option_b",
                 "title": "Option B",
                 "description": "Random classified advertising flyers posted around local street corners"
               },
               {
-                "id": "c",
+                "id": "option_c",
                 "title": "Option C",
                 "description": "International student social chat groups offering unlicensed home visits"
               },
               {
-                "id": "d",
+                "id": "option_d",
                 "title": "Option D",
                 "description": "The Australian Border Force customs baggage inspection office"
               }
@@ -384,21 +384,11 @@
           {
             "type": "TextBody",
             "markdown": true,
-            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_1.form.q1}`"
-          },
-          {
-            "type": "TextBody",
-            "markdown": true,
             "text": "*Correct Answer:* Option B (Book an appointment with a General Practitioner (GP))\n\n💡 *Explanation:* In Australia, a General Practitioner (GP) is generally your primary healthcare contact for non-emergency illnesses. Emergency departments and 000 ambulances are reserved for life-threatening medical situations.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
           },
           {
             "type": "TextSubheading",
             "text": "Question 2 (+10 XP)"
-          },
-          {
-            "type": "TextBody",
-            "markdown": true,
-            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_2.form.q2}`"
           },
           {
             "type": "TextBody",
@@ -412,11 +402,6 @@
           {
             "type": "TextBody",
             "markdown": true,
-            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_3.form.q3}`"
-          },
-          {
-            "type": "TextBody",
-            "markdown": true,
             "text": "*Correct Answer:* Option A (A medical practice in your OSHC insurer’s direct billing network)\n\n💡 *Explanation:* Direct billing network clinics have agreements with your OSHC provider to send the medical bill directly to the insurer. This helps reduce or eliminate the upfront payment you need to make at the time of your visit.\n\n🔗 *Source Reference:* [What to do if you get sick in Australia](https://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/)\nhttps://www.medibank.com.au/overseas-health-insurance/guides/articles/getting-sick-in-australia/"
           },
           {
@@ -426,21 +411,11 @@
           {
             "type": "TextBody",
             "markdown": true,
-            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_4.form.q4}`"
-          },
-          {
-            "type": "TextBody",
-            "markdown": true,
             "text": "*Correct Answer:* Option A (Online Doctor consultations for 24/7 video or phone appointments)\n\n💡 *Explanation:* Many OSHC apps offer a 24/7 Online Doctor service where students can speak with qualified doctors via video or phone for medical advice, prescriptions, and certificates with no out-of-pocket costs.\n\n🔗 *Source Reference:* [Overseas Student Health Cover (OSHC) | Overseas | Medibank](https://www.medibank.com.au/overseas-health-insurance/oshc/)\nhttps://www.medibank.com.au/overseas-health-insurance/oshc/"
           },
           {
             "type": "TextSubheading",
             "text": "Question 5 (+10 XP)"
-          },
-          {
-            "type": "TextBody",
-            "markdown": true,
-            "text": "`'*Your Selection:* Option ' + ${screen.QUESTION_5.form.q5}`"
           },
           {
             "type": "TextBody",
@@ -478,11 +453,11 @@
             "on-click-action": {
               "name": "complete",
               "payload": {
-                "q1": "${screen.QUESTION_1.form.q1}",
-                "q2": "${screen.QUESTION_2.form.q2}",
-                "q3": "${screen.QUESTION_3.form.q3}",
-                "q4": "${screen.QUESTION_4.form.q4}",
-                "q5": "${screen.QUESTION_5.form.q5}"
+                "q_one": "${screen.QUESTION_ONE.form.q_one}",
+                "q_two": "${screen.QUESTION_TWO.form.q_two}",
+                "q_three": "${screen.QUESTION_THREE.form.q_three}",
+                "q_four": "${screen.QUESTION_FOUR.form.q_four}",
+                "q_five": "${screen.QUESTION_FIVE.form.q_five}"
               }
             }
           }
