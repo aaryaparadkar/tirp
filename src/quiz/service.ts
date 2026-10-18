@@ -187,7 +187,7 @@ export async function startQuizForContact(
         to: contact.phone,
         flowId: quizFlowId,
         bodyText: `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\nTap below to take your 5-question quiz!`,
-        flowCta: 'Start Learning & Quiz',
+        flowCta: 'Start Quiz',
         screen: 'LESSON',
         data: {
           session_id: sessionId,
