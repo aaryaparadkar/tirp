@@ -86,6 +86,9 @@ export async function listDueArrivalQuizzes(
      JOIN contacts c ON c.id = o.contact_id
      WHERE o.quiz_due_at <= now()
        AND o.arrival_quiz_started_at IS NULL
+       AND o.quiz_invite_opted_in_at IS NOT NULL
+       AND o.quiz_invite_opted_out_at IS NULL
+       AND o.quiz_invite_sent_at IS NULL
      ORDER BY o.quiz_due_at
      LIMIT 50`
   );
@@ -95,4 +98,41 @@ export async function listDueArrivalQuizzes(
     phone: row.phone,
     quizDueAt: row.quiz_due_at,
   }));
+}
+/**
+ * Record explicit student consent for arrival quiz invitations.
+ * Call only after consent has been received and verified.
+ */
+export async function recordArrivalQuizConsent(
+  db: Database,
+  contactId: string
+): Promise<boolean> {
+  const result = await db.query(
+    `UPDATE onboarding_state
+     SET quiz_invite_opted_in_at = now(),
+         quiz_invite_opted_out_at = NULL,
+         updated_at = now()
+     WHERE contact_id = $1`,
+    [contactId]
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * Withdraw consent for arrival quiz invitations.
+ */
+export async function withdrawArrivalQuizConsent(
+  db: Database,
+  contactId: string
+): Promise<boolean> {
+  const result = await db.query(
+    `UPDATE onboarding_state
+     SET quiz_invite_opted_out_at = now(),
+         updated_at = now()
+     WHERE contact_id = $1`,
+    [contactId]
+  );
+
+  return (result.rowCount ?? 0) > 0;
 }

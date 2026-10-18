@@ -1,6 +1,9 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-
+import {
+  runOnboardingDryRun,
+  runOnboardingDemoSend,
+} from './onboarding/scheduler.js';
 try {
   process.loadEnvFile?.();
 } catch {}
@@ -77,6 +80,33 @@ export async function start(): Promise<http.Server> {
   sendReminders();
   const reminderTimer = setInterval(sendReminders, 60 * 60 * 1000);
   reminderTimer.unref();
+  // Onboarding scheduler — local dry-run mode only
+  // Onboarding scheduler — dry-run or sandbox demo
+  if (
+    process.env.ONBOARDING_DRY_RUN === 'true' ||
+    process.env.ONBOARDING_DEMO_SEND === 'true'
+  ) {
+    const checkOnboarding = (): void => {
+      const job = process.env.ONBOARDING_DEMO_SEND === 'true'
+        ? runOnboardingDemoSend(runtime.db)
+        : runOnboardingDryRun(runtime.db);
+
+      void job.catch((error) => {
+        console.error('[onboarding] Scheduler failed:', error);
+      });
+    };
+
+    // Check immediately when the server starts
+    checkOnboarding();
+
+    // Then check every 60 seconds
+    const onboardingTimer = setInterval(
+      checkOnboarding,
+      60 * 1000
+    );
+
+    onboardingTimer.unref();
+  }
   const server = http.createServer(async (req, res) => {
     try {
       const request = new Request(`http://${req.headers.host || 'localhost'}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, body: ['GET', 'HEAD'].includes(req.method || '') ? undefined : req as unknown as BodyInit, duplex: 'half' } as RequestInit);

@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import {recordArrivalQuizConsent,withdrawArrivalQuizConsent} from './onboarding/service.js';
+import { saveArrivalDate } from './onboarding/service.js';
 import type { Database } from './db.js';
 
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
@@ -194,6 +196,93 @@ async function handleText(
   // 1b) Quiz mode: explicit QUIZ / START QUIZ starts a session, an active
   // session consumes answers and YES / START resumes. Emergency already
   // handled above, so quiz can never block an emergency request.
+  // Arrival-based quiz invitation consent
+  const command = text.toLowerCase().replace(/\s+/g, ' ').trim();
+
+  if (command === 'arrival quiz on') {
+    const updated = await recordArrivalQuizConsent(db, contact.id);
+
+    const reply = updated
+      ? 'You have opted in to receive an OSHC Compass quiz invitation two days after your planned arrival in Australia. Reply ARRIVAL QUIZ OFF or STOP to opt out.'
+      : 'We could not find your OSHC onboarding record. Please complete onboarding first.';
+
+    await sendAnswer(phoneId, contact.phone, reply);
+    await saveTurn(db, contact.id, 'outbound', reply, {
+      intent: 'onboarding_consent',
+      language: lang,
+    });
+
+    return;
+  }
+
+  if (command === 'arrival quiz off') {
+    const updated = await withdrawArrivalQuizConsent(db, contact.id);
+
+    const reply = updated
+      ? 'Your arrival quiz invitations are now turned off. You can still start a quiz anytime by replying QUIZ.'
+      : 'No arrival quiz onboarding record was found.';
+
+    await sendAnswer(phoneId, contact.phone, reply);
+    await saveTurn(db, contact.id, 'outbound', reply, {
+      intent: 'onboarding_consent',
+      language: lang,
+    });
+
+    return;
+  }
+
+  // STOP also withdraws consent for scheduled arrival invitations.
+  // The existing quiz handler below continues to handle quiz cancellation.
+  if (command === 'stop' || command === 'stop reminders') {
+    await withdrawArrivalQuizConsent(db, contact.id);
+  }  
+  // Capture the student's planned arrival date
+  if (/^arrival date\b/i.test(text)) {
+    const travelDate = text
+      .replace(/^arrival date\b/i, '')
+      .trim();
+
+    let reply: string;
+
+    try {
+      const quizDueAt = await saveArrivalDate(
+        db,
+        contact.id,
+        travelDate
+      );
+
+      const formattedDate = quizDueAt.toLocaleString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+
+      reply =
+        `Thanks! Your arrival date is saved as ${travelDate}.\n\n` +
+        `Your first OSHC quiz is scheduled for ${formattedDate} ` +
+        `(Sydney/Melbourne time).`;
+
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === 'Travel date must be YYYY-MM-DD'
+      ) {
+        reply = 'Please send your date like this: ARRIVAL DATE 2026-10-16';
+      } else {
+        console.error('[onboarding] Arrival date failed:', error);
+        reply = 'Unable to save your arrival date. Please check your onboarding record.';
+      }
+    }
+
+    await sendAnswer(phoneId, contact.phone, reply);
+
+    await saveTurn(db, contact.id, 'outbound', reply, {
+      intent: 'onboarding_arrival',
+      language: lang,
+    });
+
+    return;
+  }  
   if (await handleQuizText(db, contact, text)) return;
   if (await answerQuiz(db, contact, text)) return;
 
