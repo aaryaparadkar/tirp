@@ -116,10 +116,14 @@ function cookieSecure(): boolean {
 }
 
 function cookieAttributes(maxAgeSeconds: number): string {
+  const sameSite = (process.env.DASHBOARD_COOKIE_SAMESITE || 'Lax').trim();
+  const normalizedSameSite = ['Lax', 'Strict', 'None'].includes(sameSite)
+    ? sameSite
+    : 'Lax';
   const parts = [
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    `SameSite=${normalizedSameSite}`,
     `Max-Age=${maxAgeSeconds}`,
   ];
   if (cookieSecure()) parts.push('Secure');
