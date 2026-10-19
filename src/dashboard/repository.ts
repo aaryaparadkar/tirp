@@ -197,6 +197,33 @@ export async function getConversationMessages(db: Database, conversationId: stri
   return result.rows;
 }
 
+export type OnboardingProfileRow = {
+  travel_date: string | null;
+  quiz_due_at: string | null;
+  is_due: boolean;
+  opted_in: boolean;
+  sent: boolean;
+};
+
+/** Read the compact onboarding state shown in the conversation profile. */
+export async function getOnboardingProfile(
+  db: Database,
+  contactId: string,
+): Promise<OnboardingProfileRow | null> {
+  const result = await db.query<OnboardingProfileRow>(
+    `SELECT
+       travel_date::text AS travel_date,
+       quiz_due_at::text AS quiz_due_at,
+       quiz_due_at IS NOT NULL AND quiz_due_at <= now() AS is_due,
+       quiz_invite_opted_in_at IS NOT NULL AS opted_in,
+       quiz_invite_sent_at IS NOT NULL AS sent
+     FROM onboarding_state
+     WHERE contact_id = $1`,
+    [contactId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function getMessageById(db: Database, messageId: string): Promise<MessageRow | null> {
   const result = await db.query<MessageRow>(
     `SELECT id, conversation_id, direction, message_type, channel, author_type, author_name, body,

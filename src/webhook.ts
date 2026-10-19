@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import {recordArrivalQuizConsent,withdrawArrivalQuizConsent} from './onboarding/service.js';
-import { saveArrivalDate } from './onboarding/service.js';
+import {
+  parseArrivalDate,
+  recordArrivalQuizConsent,
+  scheduleArrivalReminder,
+  saveArrivalDate,
+  withdrawArrivalQuizConsent,
+} from './onboarding/service.js';
 import type { Database } from './db.js';
 
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
@@ -18,6 +23,11 @@ import { answerQuiz, handleQuizText } from './quiz/service.js';
 import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
 
 import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
+
+function extractArrivalDateInput(text: string): string | null {
+  const match = /^(?:arrival\s+date|my\s+arrival\s+date(?:\s+is)?|i(?:'ll|\s+will)?\s+arrive(?:\s+on)?|arriving(?:\s+on)?)\s*(?::|-|is)?\s*(.+)$/i.exec(text.trim());
+  return match?.[1]?.trim() || null;
+}
 
 import type { Contact, FlowResponse, SupportedLanguage } from './types.js';
 
@@ -237,14 +247,17 @@ async function handleText(
     await withdrawArrivalQuizConsent(db, contact.id);
   }  
   // Capture the student's planned arrival date
-  if (/^arrival date\b/i.test(text)) {
-    const travelDate = text
-      .replace(/^arrival date\b/i, '')
-      .trim();
+  // Accept the explicit command forms as well as a bare date reply to a prior
+  // onboarding prompt (for example `16 October` or `tomorrow`).
+  const explicitArrivalDate = extractArrivalDateInput(text);
+  const arrivalDateInput = explicitArrivalDate || (parseArrivalDate(text) ? text.trim() : null);
+  if (arrivalDateInput) {
+    const travelDate = parseArrivalDate(arrivalDateInput);
 
     let reply: string;
 
     try {
+      if (!travelDate) throw new Error('Travel date could not be understood');
       const quizDueAt = await saveArrivalDate(
         db,
         contact.id,
@@ -262,12 +275,14 @@ async function handleText(
         `Your first OSHC quiz is scheduled for ${formattedDate} ` +
         `(Sydney/Melbourne time).`;
 
+      scheduleArrivalReminder(db, contact.id, contact.phone);
+
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message === 'Travel date must be YYYY-MM-DD'
+        error.message === 'Travel date could not be understood'
       ) {
-        reply = 'Please send your date like this: ARRIVAL DATE 2026-10-16';
+        reply = 'I could not identify that date. You can say ARRIVAL DATE 16 October 2026, 16/10/2026, 2026-10-16, tomorrow, or next Friday.';
       } else {
         console.error('[onboarding] Arrival date failed:', error);
         reply = 'Unable to save your arrival date. Please check your onboarding record.';

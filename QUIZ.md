@@ -59,3 +59,35 @@ curl -X POST https://<service>/quiz/start \
 - If Flow delivery fails, the placeholder session is rolled back and the
   request returns an error, so a retry starts cleanly instead of resuming a
   Flow-less text session.
+
+## Register onboarding purchase
+
+The purchase endpoint uses its own bearer token:
+
+```env
+ONBOARDING_TRIGGER_TOKEN=replace-with-a-different-secure-random-token
+```
+
+Example request:
+
+```bash
+curl -X POST "https://<service>/onboarding/purchase" \
+  -H "Authorization: Bearer $ONBOARDING_TRIGGER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"+61400000000","name":"Demo Student","purchaseEventKey":"purchase-001"}'
+```
+
+The `purchaseEventKey` is idempotent for a contact. Set the variable in the
+server `.env` and restart the server after changing it.
+
+For a short demo, set:
+
+```env
+ONBOARDING_ARRIVAL_REMINDER_DELAY_MS=5000
+```
+
+After a successful arrival-date confirmation, the existing arrival quiz
+reminder is then sent five seconds later. Leave it at `0` in normal operation
+to use the scheduled onboarding worker instead. The server claims the reminder
+in the database before sending so duplicate timers do not send duplicate
+messages.

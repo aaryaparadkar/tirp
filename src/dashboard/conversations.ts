@@ -128,12 +128,22 @@ export async function getConversationHandler(
   requirePermission(auth, 'conversation.read');
   const row = await requireConversation(db, conversationId);
   const messages = await repo.getConversationMessages(db, conversationId);
+  const onboarding = await repo.getOnboardingProfile(db, row.contact_id);
   const generatedAt = now();
   return json({
     summary: toConversationSummary(row, generatedAt),
     messages: messages.map((message) => toMessage(message, row.contact_name)),
     summaryLines: summaryLines(row, messages),
     recentSources: recentSources(messages),
+    onboarding: onboarding
+      ? {
+          travelDate: onboarding.travel_date,
+          quizDueAt: onboarding.quiz_due_at,
+          isDue: onboarding.is_due,
+          optedIn: onboarding.opted_in,
+          sent: onboarding.sent,
+        }
+      : null,
   });
 }
 
