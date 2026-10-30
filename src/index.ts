@@ -14,6 +14,7 @@ import { handleDashboard } from './dashboard/router.js';
 import { FlowRegistry } from './flows.js';
 import { json } from './lib.js';
 import { handleWebhook } from './webhook.js';
+import { EMERGENCY_CALL_PATH, emergencyCallPage } from './emergency-page.js';
 import { OshcServiceFlow } from './oshc-flow.js';
 import { OshcQuizFlow } from './quiz/flow.js';
 import { sendWeeklyQuizReminders } from './quiz/service.js';
@@ -61,6 +62,10 @@ function withSecurityHeaders(response: Response): Response {
 export async function handleRequest(request: Request, runtime: Runtime): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === '/health') return withSecurityHeaders(json({ ok: true, service: 'oshc-whatsapp-catalogue' }));
+  // Public "Call 000" bridge page behind the WhatsApp emergency button.
+  if (url.pathname === EMERGENCY_CALL_PATH && (request.method === 'GET' || request.method === 'HEAD')) {
+    return withSecurityHeaders(emergencyCallPage(request));
+  }
   if (url.pathname === '/webhooks/kapso' && request.method === 'POST') {
     return withSecurityHeaders(await handleWebhook(request, runtime.db, runtime.flows));
   }

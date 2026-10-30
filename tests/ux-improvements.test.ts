@@ -100,7 +100,7 @@ describe('concise answer contract', () => {
       { chunks: [], language: 'en' },
     );
     expect(ans.text).toMatch(/1\..*2\..*3\./s);
-    expect(clarificationAnswer('en').text).toMatch(/1, 2, or 3/);
+    expect(clarificationAnswer('en').text).toMatch(/1-5/);
     if (savedKeys !== undefined) process.env.MISTRAL_API_KEYS = savedKeys;
     if (savedKey !== undefined) process.env.MISTRAL_API_KEY = savedKey;
   });

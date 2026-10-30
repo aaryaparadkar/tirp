@@ -1,12 +1,13 @@
 import { mistralConfig } from './config.js';
 import { t } from './i18n.js';
-import { canonicalizeForMatch, containsCommandVariant, expandQueryWithAliases, fuzzyContainsAny, normalizeInput, resolveCommandAlias } from './input-normalization.js';
+import { canonicalizeForMatch, containsCommandVariant, containsWord, expandQueryWithAliases, fuzzyContainsAny, normalizeInput, resolveCommandAlias } from './input-normalization.js';
 import { cachedKbChunks } from './kb/loader.js';
 import { formatSources, retrieve } from './kb/index.js';
 import { REWARDS_DESTINATION, UPDATES_DESTINATIONS } from './kb/sources.js';
 import { answerMessages, classifierMessages, VALID_INTENTS } from './llm/prompts.js';
 import { mistralChat } from './llm/mistral.js';
 import { formatWhatsAppAnswer } from './response-format.js';
+import { topicGuide } from './topic-guides.js';
 import type { AssistantAnswer, ConversationTurn, Intent, IntentClassification, KbChunk, SupportedLanguage } from './types.js';
 
 export const MENU_OPTIONS: Array<{ key: string; intent: Intent; label: string; description: string }> = [
@@ -103,12 +104,19 @@ export function deterministicClassify(text: string): IntentClassification | null
   const raw = normalizeInput(text || '');
   const t = raw.toLowerCase();
   const c = canonicalizeForMatch(raw);
-  const has = (...words: string[]) => words.some((w) => t.includes(w));
+  // Whole-word matching ("form" must not fire on "information"/"format").
+  // Multi-word phrases and stems ending in '-' keep substring semantics.
+  const has = (...words: string[]) => words.some((w) => (/\s|-$/.test(w) || /[^\x00-\x7f]{2}/.test(w) ? t.includes(w.replace(/-$/, '')) : containsWord(t, w)));
   const hasFuzzy = (...words: string[]) => fuzzyContainsAny(c, words);
   const hasRaw = (...words: string[]) => words.some((w) => raw.includes(w));
   if (!t.trim()) return null;
+  // "000" only as the emergency number — not inside "$1,000" or "10000".
+  const mentionsTripleZero = /(^|[^\d,.$])000(?![\d,.])/.test(t);
+  // "Is an ambulance covered?" is a cover question, not an emergency.
+  const insuranceQuestion = /\b(cover(ed|age|s)?|claim\w*|cost\w*|price|pay\w*|bill\w*|refund|reimburs\w*|include[sd]?|benefit\w*|limit|how much)\b/.test(t);
   if (
-    has('000', 'ambulance', 'unconscious', "can't breathe", 'cannot breathe', 'bleeding heavily', 'chest pain', 'had an accident', 'seriously injured', 'overdose') ||
+    (!insuranceQuestion && (mentionsTripleZero || has('ambulance'))) ||
+    has('unconscious', "can't breathe", 'cannot breathe', 'bleeding heavily', 'chest pain', 'had an accident', 'seriously injured', 'overdose') ||
     has('emergencia', 'ambulancia', 'inconsciente', 'no puedo respirar', 'sangrado grave', 'dolor en el pecho', 'accidente grave', 'tuve un accidente') ||
     hasRaw('救命', '紧急', '救护车', '呼吸困难', '不能呼吸', '失去意识', '昏倒', '严重出血', '胸痛', '出事故', '车祸', '有人受伤')
   ) {
@@ -117,10 +125,12 @@ export function deterministicClassify(text: string): IntentClassification | null
   if (has('reward', 'livebetter', 'live better', 'perk', 'student plus', 'recompensa', 'beneficio') || hasFuzzy('reward', 'rewards', 'recompensa', 'beneficio') || hasRaw('奖励', '福利', '优惠', '学生奖励')) {
     return { intent: 'student_rewards', confidence: 0.9, needsClarification: false, keywords: ['rewards'], source: 'deterministic', rule: 'rewards' };
   }
-  if (has('waiting period', 'waiting time', 'pre-existing', 'pre existing', 'how long until covered', 'período de espera', 'periodo de espera') || hasFuzzy('waiting', 'espera') || hasRaw('等待期', '等待时间')) {
+  // Bare "waiting"/"espera" ("waiting for the bus") is not a waiting-period question.
+  const waitingContext = /\b(period|periods|time|cover|covered|oshc|claim|how long|serve|serving|periodo|período|tiempo|cobertura)\b/.test(t);
+  if (has('waiting period', 'waiting time', 'pre-existing', 'pre existing', 'how long until covered', 'período de espera', 'periodo de espera') || (waitingContext && hasFuzzy('waiting', 'espera')) || hasRaw('等待期', '等待时间')) {
     return { intent: 'waiting_periods', confidence: 0.9, needsClarification: false, keywords: ['waiting'], source: 'deterministic', rule: 'waiting-periods' };
   }
-  if (has('visa', 'visado', 'subclass 500', 'condition 8501', 'student visa requirement') || hasFuzzy('visa', 'visado', 'subclass') || hasRaw('签证', '500签证')) {
+  if (has('visa', 'visado', 'subclass 500', 'condition 8501', 'student visa requirement') || hasFuzzy('visa', 'visado', 'subclass') || containsCommandVariant(c, 'visa') || hasRaw('签证', '500签证')) {
     return { intent: 'visa_compliance', confidence: 0.9, needsClarification: false, keywords: ['visa'], source: 'deterministic', rule: 'visa' };
   }
   // Care-seeking beats fuzzy coverage/location matches ("fever" is close to
@@ -131,7 +141,7 @@ export function deterministicClassify(text: string): IntentClassification | null
     /\bgp\b/.test(t) ||
     hasRaw('生病', '感冒', '发烧', '医疗')
   ) {
-    const moneySignal = has('claim', 'reimburse', 'refund', 'money back', 'paid back', 'get paid', 'cover', 'billing', 'bill', 'cost', 'price') || hasRaw('报销', '理赔', '退款', '收据', '发票', '费用');
+    const moneySignal = containsCommandVariant(c, 'claim') || containsCommandVariant(c, 'reimbursement') || has('claim', 'reimburse', 'refund', 'money back', 'paid back', 'get paid', 'cover', 'billing', 'bill', 'cost', 'price') || hasRaw('报销', '理赔', '退款', '收据', '发票', '费用');
     if (!moneySignal && !LOCATION_SIGNAL.test(t)) {
       return { intent: 'healthcare_navigation', confidence: 0.82, needsClarification: false, keywords: ['healthcare'], source: 'deterministic', rule: 'healthcare-action' };
     }
@@ -168,7 +178,7 @@ export function deterministicClassify(text: string): IntentClassification | null
     hasFuzzy('provider', 'providers', 'proveedor', 'doctor', 'clinic', 'clinica', 'hospital', 'gp') ||
     hasRaw('直付', '诊所', '医生', '医疗机构', '医院')
   ) {
-    if (LOCATION_SIGNAL.test(t) || has('direct billing', 'provider', 'proveedor', 'members choice', "members' choice") || hasRaw('直付', '医疗机构')) {
+    if (LOCATION_SIGNAL.test(tSpace) || hasSpace('direct billing', 'provider', 'proveedor', 'members choice', "members' choice") || hasRaw('直付', '医疗机构')) {
       return { intent: 'providers', confidence: 0.88, needsClarification: false, keywords: ['provider'], source: 'deterministic', rule: 'providers-location' };
     }
     // Bare facility word with an action verb elsewhere (claim/cover/cost):
@@ -176,7 +186,7 @@ export function deterministicClassify(text: string): IntentClassification | null
     if (has('claim', 'cover', 'cost', 'price', 'bill', 'sick', 'fever', 'do i do', 'should i')) return null;
     return { intent: 'providers', confidence: 0.78, needsClarification: false, keywords: ['provider'], source: 'deterministic', rule: 'providers-bare' };
   }
-  if (has('update', 'news', 'announcement', 'change to cover', 'new benefit', 'actualiz', 'noticia') || hasFuzzy('update', 'updates', 'news') || hasRaw('更新', '通知', '最新消息')) {
+  if (has('update', 'news', 'announcement', 'change to cover', 'new benefit', 'actualiz-', 'noticia') || hasFuzzy('update', 'updates', 'news') || hasRaw('更新', '通知', '最新消息')) {
     return { intent: 'updates', confidence: 0.8, needsClarification: false, keywords: ['updates'], source: 'deterministic', rule: 'updates' };
   }
   // Support needs an explicit human-contact signal, not a bare "contact/help"
@@ -321,6 +331,30 @@ function fmt(text: string): string {
   return formatWhatsAppAnswer(text);
 }
 
+/**
+ * Turn a raw KB chunk into readable prose: drop markdown links/tables/images,
+ * join PDF hard-wraps, and cut at a sentence boundary instead of mid-word.
+ */
+export function cleanExcerpt(content: string, max = 420): string {
+  const text = (content || '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .split('\n')
+    .filter((line) => !/^\s*\|/.test(line)) // markdown tables
+    .filter((line) => !/^\s*#{1,6}\s/.test(line)) // headings
+    .filter((line) => !/\|\s*\d+\s*$/.test(line)) // PDF running headers "Guide | 9"
+    .join('\n')
+    .replace(/\n{2,}/g, '\u0000')
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(/\u0000/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+  if (text.length <= max) return text;
+  const slice = text.slice(0, max);
+  const end = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('.\n'), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+  return end > max * 0.4 ? slice.slice(0, end + 1).trim() : `${slice.slice(0, slice.lastIndexOf(' ')).trim()}…`;
+}
+
 export function staticAnswerFor(intent: Intent, question: string, language: SupportedLanguage = 'en'): AssistantAnswer | null {
   switch (intent) {
     case 'greeting':
@@ -407,6 +441,15 @@ export async function answerWithSources(
   if (staticAns && ['greeting', 'student_rewards', 'updates', 'support'].includes(classification.intent)) {
     return staticAns;
   }
+  // Nothing understood the intent (neither rules nor the LLM classifier) →
+  // ask, don't guess. Retrieval over a vague query returns *some* chunk, and
+  // answering from it is how unrelated data used to reach the user.
+  if (
+    classification.intent === 'unknown' &&
+    (classification.source === 'fallback' || classification.needsClarification || classification.confidence < 0.45)
+  ) {
+    return clarificationAnswer(language);
+  }
 
   const expandedQuestion = expandQueryWithAliases(question);
   const chunks = opts.chunks || (await cachedKbChunks().catch(() => [] as KbChunk[]));
@@ -428,9 +471,14 @@ export async function answerWithSources(
 
   if (staticAns) return staticAns;
 
+  // LLM unavailable/failed: a curated topic guide beats a raw KB excerpt
+  // (excerpts are cut mid-sentence and carry PDF line breaks and tables).
+  const guide = topicGuide(classification.intent, language);
+  if (guide) return guide;
+
   // Low-confidence / unknown → one short clarification with choices.
   if (classification.intent === 'unknown' || classification.needsClarification || classification.confidence < 0.45) {
-    if (!results.length) return clarificationAnswer(language);
+    return clarificationAnswer(language);
   }
 
   // Non-English fallback must NOT dump raw English KB excerpts.
@@ -450,10 +498,7 @@ export async function answerWithSources(
 
   // Deterministic fallback: short extractive summary (English only), max 2 chunks.
   if (results.length) {
-    const top = results.slice(0, 1);
-    const body = top
-      .map((r) => r.chunk.content.slice(0, 420).trim())
-      .join('\n\n');
+    const body = cleanExcerpt(results[0].chunk.content, 420);
     return {
       text: fmt(
         `*Here's what OSHC sources say:*\n\n${body}\n\n` +

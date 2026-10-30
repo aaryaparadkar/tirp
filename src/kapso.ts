@@ -104,31 +104,47 @@ export async function sendList(
   });
 }
 
-export async function sendEmergencyNumber(phoneNumberId: string, to: string, bodyText: string): Promise<unknown> {
+export interface EmergencyButtonOptions {
+  /** https URL of the /call/000 bridge page (see emergency-page.ts). */
+  callUrl?: string | null;
+  /** Button label, max 20 chars on WhatsApp. */
+  buttonText?: string;
+}
+
+/**
+ * Send a one-tap "Call 000" button. Tapping it opens the phone's dialer with
+ * 000 pre-typed — it never places the call by itself.
+ *
+ * WhatsApp CTA-URL buttons need an http(s) URL, so the primary path links to
+ * our /call/000 bridge page, which hands off to `tel:000`. The old
+ * call-permission message was removed: it asks the user to let the
+ * *business* call them, which is the wrong action in an emergency.
+ */
+export async function sendEmergencyNumber(
+  phoneNumberId: string,
+  to: string,
+  bodyText: string,
+  opts: EmergencyButtonOptions = {},
+): Promise<unknown> {
   const client = createKapsoClient();
   const normalizedTo = to.replace(/^\+/, '');
-  // Prefer native call-permission request so the user gets a Call button.
-  // 000 is Australia's emergency number; WhatsApp/Kapso may restrict this,
-  // so callers must also send a tel: fallback text (handled by webhook layer).
-  try {
-    await client.messages.sendInteractiveCallPermission({
-      phoneNumberId,
-      to: normalizedTo,
-      bodyText,
-      footerText: "Australia emergency: 000",
-      parameters: { phoneNumber: '000', callPurpose: 'Emergency help' },
-    });
-    return { callPermissionSent: true };
-  } catch {
-    // Fall back to CTA URL button with tel: link.
-    return client.messages.sendInteractiveCtaUrl({
-      phoneNumberId,
-      to: normalizedTo,
-      bodyText,
-      footerText: "Australia emergency: 000",
-      parameters: { displayText: 'Call 000 now', url: 'tel:000' },
-    });
+  const displayText = (opts.buttonText || 'Call 000').slice(0, 20);
+  const send = (url: string) => client.messages.sendInteractiveCtaUrl({
+    phoneNumberId,
+    to: normalizedTo,
+    bodyText,
+    footerText: 'Australia emergency: 000',
+    parameters: { displayText, url },
+  });
+  if (opts.callUrl) {
+    try {
+      return await send(opts.callUrl);
+    } catch (error) {
+      console.error('[emergency] call-page button failed, trying tel: link', error);
+    }
   }
+  // Last resort: some clients accept tel: directly. Caller sends plain text if this throws.
+  return send('tel:000');
 }
 
 export async function sendCallCta(

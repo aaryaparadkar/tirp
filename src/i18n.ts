@@ -17,6 +17,7 @@ export type TranslationKey =
   | 'claimForms'
   | 'askVerifyUpdate'
   | 'clarification'
+  | 'illegible'
   | 'nextStepFallback';
 
 const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
@@ -83,12 +84,19 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `*Next step:* reply REIMBURSEMENT to learn when you get paid.`,
     askVerifyUpdate: `Tell me what update you heard about (e.g. price, cover change, app change) and I'll explain how to verify it for your policy.`,
     clarification:
-      `*I want to get this right.*\n\n` +
-      `Did you mean:\n\n` +
-      `1. How to submit a claim\n` +
-      `2. When you will be reimbursed\n` +
-      `3. What your cover includes\n\n` +
-      `Reply *1, 2, or 3* — or rephrase in a few words.`,
+      `*I'm not sure what you're asking.*\n\n` +
+      `Pick a topic:\n\n` +
+      `1. Understand my cover\n` +
+      `2. Make a claim\n` +
+      `3. Find a doctor or clinic\n` +
+      `4. Pharmacy and medicines\n` +
+      `5. Visa or waiting periods\n\n` +
+      `Reply with a *number (1-5)*, or ask again in a few words — e.g. "how do I claim a GP visit?"`,
+    illegible:
+      `*Sorry, I couldn't read that message.* 🤔\n\n` +
+      `It doesn't look like words I understand, so I won't guess.\n\n` +
+      `Please type your question in a few words (e.g. "what does my cover include?"), or reply *MENU* to see topics.\n\n` +
+      `Emergency? Call *000* now.`,
     nextStepFallback: `*Next step:* reply MENU for all topics, or type your question in a few words.`,
   },
   'zh-CN': {
@@ -151,12 +159,19 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `*下一步：*回复“报销”了解多久能拿回费用。`,
     askVerifyUpdate: '请告诉我你听到的更新内容（例如价格、保障变化、App 变化），我会告诉你如何针对你的保单进行核实。',
     clarification:
-      `*我想准确理解你的问题。*\n\n` +
-      `你是指：\n\n` +
-      `1. 如何提交理赔\n` +
-      `2. 多久能拿回报销\n` +
-      `3. 保障范围包括什么\n\n` +
-      `请回复 *1、2 或 3*，或用几个词重新描述。`,
+      `*我不太确定你想问什么。*\n\n` +
+      `请选择主题：\n\n` +
+      `1. 了解保障范围\n` +
+      `2. 申请理赔\n` +
+      `3. 查找医生或诊所\n` +
+      `4. 药房和处方药\n` +
+      `5. 签证或等待期\n\n` +
+      `请回复*数字（1-5）*，或用几个词重新描述，例如“看GP怎么理赔？”`,
+    illegible:
+      `*抱歉，我看不懂这条消息。* 🤔\n\n` +
+      `它看起来不像我能理解的文字，所以我不会猜测。\n\n` +
+      `请用几个词输入你的问题（例如“我的保障包括什么？”），或回复*菜单*查看主题。\n\n` +
+      `紧急情况请立即拨打 *000*。`,
     nextStepFallback: `*下一步：*回复“菜单”查看全部主题，或用几个词描述你的问题。`,
   },
   es: {
@@ -219,12 +234,19 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `*Siguiente paso:* responde REEMBOLSO para saber cuándo recibes el pago.`,
     askVerifyUpdate: 'Dime qué actualización escuchaste (por ejemplo, precio, cambio de cobertura, cambio en la app) y te explicaré cómo verificarla para tu póliza.',
     clarification:
-      `*Quiero entenderte bien.*\n\n` +
-      `¿Quisiste decir:\n\n` +
-      `1. Cómo presentar un reclamo\n` +
-      `2. Cuándo recibirás el reembolso\n` +
-      `3. Qué incluye tu cobertura\n\n` +
-      `Responde *1, 2 o 3*, o reformula en pocas palabras.`,
+      `*No estoy seguro de qué preguntas.*\n\n` +
+      `Elige un tema:\n\n` +
+      `1. Entender mi cobertura\n` +
+      `2. Hacer un reclamo\n` +
+      `3. Buscar un médico o clínica\n` +
+      `4. Farmacia y medicamentos\n` +
+      `5. Visa o períodos de espera\n\n` +
+      `Responde con un *número (1-5)* o pregunta de nuevo en pocas palabras, por ejemplo: "¿cómo reclamo una visita al GP?"`,
+    illegible:
+      `*Lo siento, no pude entender ese mensaje.* 🤔\n\n` +
+      `No parecen palabras que yo entienda, así que no voy a adivinar.\n\n` +
+      `Escribe tu pregunta en pocas palabras (por ejemplo: "¿qué incluye mi cobertura?") o responde *MENÚ* para ver los temas.\n\n` +
+      `¿Emergencia? Llama al *000* ahora.`,
     nextStepFallback: `*Siguiente paso:* responde MENÚ para ver todos los temas, o escribe tu pregunta en pocas palabras.`,
   },
 };

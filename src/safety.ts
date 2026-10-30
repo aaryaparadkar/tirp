@@ -44,10 +44,52 @@ const NON_EMERGENCY_GUARD = /\b(mild|slight|a\s+little|minor)\s+(cold|cough|head
 const NON_EMERGENCY_GUARD_ES = /\b(leve|ligero|un poco)\s+(resfriado|tos|dolor de cabeza|fiebre|dolor de garganta)\b/i;
 const NON_EMERGENCY_GUARD_ZH = /(轻微|有点|小感冒|轻微咳嗽|轻微头痛|低烧|喉咙有点痛)/;
 
+/**
+ * Tier 1: unambiguous danger. Always an emergency, even inside a question.
+ * Typo-tolerant spellings are included explicitly (people in distress type fast).
+ */
+const CRITICAL_PATTERNS: RegExp[] = [
+  /\b(can'?t|cannot|can\s+not|cant|unable\s+to)\s+breath(e|ing)?\b/i,
+  /\b(not|stopped|isn'?t|is\s+not)\s+breathing\b/i,
+  /\b(struggling|hard|trouble)\s+(to\s+)?breath(e|ing)\b/i,
+  /\b(unconcious|unconsious|unconscous|uncon?scious)\b/i,
+  /\b(heart\s+attack|having\s+a\s+stroke|chest\s+(pain|pian|tightness))\b/i,
+  /\b(bleeding|bleding)\s+(a\s+lot|heavily|badly|everywhere|won'?t\s+stop|nonstop)\b/i,
+  /\b(lots?\s+of|so\s+much)\s+blood\b/i,
+  /\b(suicidal|want\s+to\s+die|wanna\s+die|going\s+to\s+kill\s+myself|kill\s+myself|end\s+it\s+all|hurt\s+myself)\b/i,
+  /\b(i'?m|i\s+am|he'?s|she'?s|they'?re|someone\s+is)\s+dying\b/i,
+  /\b(overdosed?|poisoned|swallowed\s+(poison|bleach|pills))\b/i,
+  /\b(throat\s+(is\s+)?(closing|swelling)|severe\s+allergic\s+reaction|anaphyla\w*)\b/i,
+  /\b(having\s+a\s+seizure|seizing)\b/i,
+  /\b(hit\s+by\s+a\s+(car|bus|truck|bike)|car\s+crash|crashed\s+(my|the|a)\s+car)\b/i,
+  /\b(someone\s+is\s+)?(attacking|stabbing|chasing)\s+me\b/i,
+  /\b(being|been|was|got)\s+(attacked|assaulted|stabbed|robbed\s+at\s+knifepoint)\b/i,
+  /\b(house|building|room|kitchen)\s+(is\s+)?on\s+fire\b/i,
+  /\b(broke|broken|snapped)\s+(my|his|her|their)?\s*(leg|arm|neck|back|bone)\b/i,
+];
+
+/**
+ * Tier 2: emergency words that also appear in insurance questions
+ * ("Is an ambulance covered?", "emergency department claim"). These only
+ * count when the message is not phrased as a cover/claim/cost question.
+ */
+const SOFT_EMERGENCY_PATTERNS: RegExp[] = [
+  /\b(this\s+is|it'?s|its|it\s+is|having|have|got)\s+an?\s+(medical\s+)?(emergency|emergancy|emergecy)\b/i,
+  /\b(medical\s+emergency|emergency\s+help|help\s+emergency)\b/i,
+  /^(emergency|emergancy|emergecy|emergncy|emergeny)[\s!.]*$/i,
+  /\b(ambulance|ambulence|ambulanc|ambulanse)\b/i,
+  /\b(help\s+me|please\s+help)\b.*\b(hurt|bleeding|injured|pain|scared|danger)\b/i,
+  /\bin\s+danger\b/i,
+];
+
+const INSURANCE_QUESTION = /\b(cover(ed|age|s)?|claim(s|ing)?|cost(s)?|price|pay(s|ing)?|paid|bill(s|ed)?|refund|reimburs\w*|include[sd]?|benefit(s)?|polic(y|ies)|limit|excess|waiting\s+period|how\s+much|does\s+(oshc|medibank|my\s+cover))\b/i;
+
 export function isEmergency(text: string): boolean {
   const normalized = (text || '').normalize('NFKC').trim();
   if (!normalized) return false;
   if (ZH_HIGH_RISK.some((w) => normalized.includes(w))) return true;
+  if (CRITICAL_PATTERNS.some((re) => re.test(normalized))) return true;
+  if (!INSURANCE_QUESTION.test(normalized) && SOFT_EMERGENCY_PATTERNS.some((re) => re.test(normalized))) return true;
   if (
     (NON_EMERGENCY_GUARD.test(normalized) || NON_EMERGENCY_GUARD_ES.test(normalized) || NON_EMERGENCY_GUARD_ZH.test(normalized)) &&
     !/\b(breath|unconscious|bleed|chest|accident|ambulance|000|respirar|inconsciente|sangrado|pecho|accidente|ambulancia|呼吸|意识|出血|胸|事故|救护)\b/i.test(normalized)

@@ -6,7 +6,20 @@ import {
   saveArrivalDate,
   withdrawArrivalQuizConsent,
 } from './onboarding/service.js';
+import {
+  clearNameRequest,
+  completeSelfOnboarding,
+  hasPendingNameRequest,
+  isCancelCommand,
+  isOnboardCommand,
+  onboardingCopy,
+  parseStudentName,
+  startSelfOnboarding,
+} from './onboarding/self-service.js';
 import type { Database } from './db.js';
+import { emergencyCallUrl } from './emergency-page.js';
+import { assessLegibility } from './legibility.js';
+import { topicGuide } from './topic-guides.js';
 
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
 
@@ -20,7 +33,7 @@ import { FlowRegistry } from './flows.js';
 import { detectLanguage } from './language.js';
 import { id, json, now } from './lib.js';
 import { answerQuiz, handleQuizText } from './quiz/service.js';
-import { MENU_OPTIONS, answerWithSources, classifyIntent, resolveMenuSelection, staticAnswerFor } from './router.js';
+import { MENU_OPTIONS, answerWithSources, classifyIntent, deterministicClassify, resolveMenuSelection, staticAnswerFor } from './router.js';
 
 import { emergencyCallText, emergencyReply, isEmergency, isGreeting } from './safety.js';
 
@@ -29,7 +42,7 @@ function extractArrivalDateInput(text: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
-import type { Contact, FlowResponse, SupportedLanguage } from './types.js';
+import type { Contact, FlowResponse, Intent, SupportedLanguage } from './types.js';
 
 interface KapsoMessage {
   id?: string;
@@ -154,15 +167,26 @@ function menuIdFor(intent: string): string {
 
 }
 
+const EMERGENCY_BUTTON_TEXT: Record<SupportedLanguage, string> = {
+  en: 'Call 000',
+  'zh-CN': '拨打 000',
+  es: 'Llamar al 000',
+};
+
 async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
   const kapso = await import('./kapso.js');
   const body = emergencyReply(lang);
   // Always send the text first so the number is visible even if interactive fails.
   await kapso.sendText(phoneNumberId, to, body);
   try {
-    await kapso.sendEmergencyNumber(phoneNumberId, to, emergencyCallText(lang));
-  } catch {
-    await kapso.sendText(phoneNumberId, to, `Call now: tel:${EMERGENCY_NUMBER_AU} — dial ${EMERGENCY_NUMBER_AU} on your phone.`).catch(() => {});
+    // One-tap button → opens the dialer with 000 pre-typed (never auto-calls).
+    await kapso.sendEmergencyNumber(phoneNumberId, to, emergencyCallText(lang), {
+      callUrl: emergencyCallUrl(lang),
+      buttonText: EMERGENCY_BUTTON_TEXT[lang],
+    });
+  } catch (error) {
+    console.error('[emergency] call button failed', error);
+    await kapso.sendText(phoneNumberId, to, `Dial ${EMERGENCY_NUMBER_AU} on your phone now.`).catch(() => {});
   }
 
 }
@@ -178,6 +202,90 @@ export function isSupportKeyword(text: string): boolean {
   const raw = normalizeInput(text);
   if (/^(support|soporte|ayuda|客服|帮助|supporto|help|ayua|contacto)$/i.test(raw)) return true;
   return resolveCommandAlias(canonicalizeForMatch(raw)) === 'support' || resolveCommandAlias(canonicalizeForMatch(raw)) === 'help';
+}
+
+/** Single-word topic commands ("claim", "cover", "visa") → menu topic. */
+function topicCommandIntent(text: string): Intent | null {
+  const alias = resolveCommandAlias(canonicalizeForMatch(text));
+  const map: Record<string, Intent> = {
+    claim: 'claims',
+    reimbursement: 'claims',
+    cover: 'coverage',
+    pharmacy: 'pharmacy',
+    provider: 'providers',
+    visa: 'visa_compliance',
+  };
+  return alias ? map[alias] || null : null;
+}
+
+/** Messages that must keep their normal meaning even while a name prompt is open. */
+function isRoutingCommand(text: string): boolean {
+  const c = canonicalizeForMatch(text);
+  if (isGreeting(text) || isFullMenuRequest(text) || isLanguageNeutralSelection(text) || isSupportKeyword(text)) return true;
+  if (/^(quiz|start quiz|resume|yes|start|stop|stop reminders|arrival quiz (on|off))$/.test(c)) return true;
+  if (extractArrivalDateInput(text) || parseArrivalDate(text)) return true;
+  if (/[?？]/.test(text)) return true;
+  if (topicCommandIntent(text) || resolveCommandAlias(c)) return true;
+  // Longer messages that clearly match a topic are questions, not names.
+  // (Short ones are not checked: "Visal" or "Formosa" contain keywords.)
+  if (c.split(' ').length > 3 && deterministicClassify(text)) return true;
+  return false;
+}
+
+async function reply(
+  db: Database,
+  contact: Contact,
+  body: string,
+  meta: { intent: string; language: SupportedLanguage; sourceIds?: string[]; sourceUrls?: string[] },
+): Promise<void> {
+  await sendAnswer(catalogueConfig.phoneNumberId, contact.phone, body);
+  await saveTurn(db, contact.id, 'outbound', body, meta);
+}
+
+/**
+ * Self-service onboarding: ONBOARD → "what's your name?" → name → done.
+ * Returns true when the message was consumed by onboarding.
+ */
+async function handleOnboarding(db: Database, contact: Contact, text: string, lang: SupportedLanguage): Promise<boolean> {
+  const copy = onboardingCopy(lang);
+  if (isOnboardCommand(text)) {
+    try {
+      const state = await startSelfOnboarding(db, contact.id);
+      const body = state.onboarded && state.studentName ? copy.askNameAgain(state.studentName) : copy.askName;
+      await reply(db, contact, body, { intent: 'onboarding_name_request', language: lang });
+    } catch (error) {
+      console.error('[onboarding] start failed', error);
+      await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
+    }
+    return true;
+  }
+
+  if (!(await hasPendingNameRequest(db, contact.id))) return false;
+
+  if (isCancelCommand(text)) {
+    await clearNameRequest(db, contact.id);
+    await reply(db, contact, copy.cancelled, { intent: 'onboarding_cancelled', language: lang });
+    return true;
+  }
+  // A question or command means the student moved on — close the prompt and route normally.
+  if (isRoutingCommand(text)) {
+    await clearNameRequest(db, contact.id);
+    return false;
+  }
+  const name = parseStudentName(text);
+  if (!name) {
+    await reply(db, contact, copy.invalidName, { intent: 'onboarding_name_invalid', language: lang });
+    return true;
+  }
+  try {
+    await completeSelfOnboarding(db, contact.id, name);
+    contact.name = name;
+    await reply(db, contact, copy.done(name), { intent: 'onboarding_complete', language: lang });
+  } catch (error) {
+    console.error('[onboarding] completion failed', error);
+    await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
+  }
+  return true;
 }
 
 async function handleText(
@@ -202,6 +310,10 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
     return;
   }
+
+  // 1a) Self-service onboarding (ONBOARD → name → done). Runs before the
+  // arrival/quiz handlers so a typed name is never mistaken for an answer.
+  if (await handleOnboarding(db, contact, text, lang)) return;
 
   // 1b) Quiz mode: explicit QUIZ / START QUIZ starts a session, an active
   // session consumes answers and YES / START resumes. Emergency already
@@ -308,32 +420,34 @@ async function handleText(
     await saveTurn(db, contact.id, 'outbound', full ? t(lang, 'fullMenu') : t(lang, 'greeting'), { intent: 'greeting', language: lang });
     return;
   }
-  // 3) Direct menu selection (numbers, button ids).
-  const menuIntent = resolveMenuSelection(text);
-  if (menuIntent && isLanguageNeutralSelection(text)) {
+  // 3) Direct menu selection (numbers, button ids) and bare topic words
+  // ("claim", "cover"). These get a complete, curated topic guide — never a
+  // raw KB excerpt and never an LLM call on the literal "menu:coverage".
+  const menuIntent = isLanguageNeutralSelection(text) ? resolveMenuSelection(text) : topicCommandIntent(text);
+  if (menuIntent) {
     if (menuIntent === 'emergency') {
       await sendEmergency(phoneId, contact.phone, lang);
       await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
       return;
     }
-    const direct = staticAnswerFor(menuIntent, text, lang);
+    const direct = staticAnswerFor(menuIntent, text, lang) || topicGuide(menuIntent, lang);
     if (direct) {
-      await sendAnswer(phoneId, contact.phone, direct.text);
-      await saveTurn(db, contact.id, 'outbound', direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, sourceUrls: direct.sourceUrls, language: lang });
+      await reply(db, contact, direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, sourceUrls: direct.sourceUrls, language: lang });
       return;
     }
-    // Otherwise fall through to retrieval with the menu intent.
-    const history = await recentTurns(db, contact.id);
-    const ans = await answerWithSources(text, { intent: menuIntent, confidence: 1, needsClarification: false, keywords: [], source: 'deterministic' }, { history, language: lang });
-    await sendAnswer(phoneId, contact.phone, ans.text);
-    await saveTurn(db, contact.id, 'outbound', ans.text, { intent: ans.intent, sourceIds: ans.sourceIds, sourceUrls: ans.sourceUrls, llmModel: ans.model, language: lang });
-    return;
   }
   // 4) SUPPORT keyword fast-path (multilingual).
   if (isSupportKeyword(text)) {
     const s = staticAnswerFor('support', text, lang)!;
     await sendAnswer(phoneId, contact.phone, s.text);
     await saveTurn(db, contact.id, 'outbound', s.text, { intent: 'support', sourceIds: s.sourceIds, sourceUrls: s.sourceUrls, language: lang });
+    return;
+  }
+  // 4b) Legibility gate: if we can't recognise a single word, say so instead
+  // of fuzzy-matching keyboard mash onto a menu topic.
+  const legibility = assessLegibility(text);
+  if (!legibility.legible) {
+    await reply(db, contact, t(lang, 'illegible'), { intent: 'illegible', language: lang });
     return;
   }
   // 5) LLM classification + grounded answer.
