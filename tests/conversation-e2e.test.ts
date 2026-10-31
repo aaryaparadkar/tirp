@@ -12,7 +12,9 @@ vi.mock('../src/kapso.js', () => ({
   sendList: vi.fn(async (_p: string, _to: string, body: string, _btn: string, sections: Array<{ rows: Array<{ id: string; title: string }> }>) => {
     sent.push({ kind: 'list', body: `${body}\n${sections.flatMap((x) => x.rows.map((r) => `${r.id}|${r.title}`)).join('\n')}` });
   }),
-  sendButtons: vi.fn(async (_p: string, _to: string, body: string) => { sent.push({ kind: 'buttons', body }); }),
+  sendButtons: vi.fn(async (_p: string, _to: string, body: string, buttons: Array<{ id: string; title: string }>) => {
+    sent.push({ kind: 'buttons', body: `${body}\n${buttons.map((b) => `${b.id}|${b.title}`).join('\n')}` });
+  }),
   sendEmergencyNumber: vi.fn(async (_p: string, _to: string, body: string, opts: { callUrl?: string; buttonText?: string }) => {
     sent.push({ kind: 'call-button', body, url: opts.callUrl ?? undefined, label: opts.buttonText });
   }),
@@ -41,14 +43,16 @@ const { handleWebhook } = await import('../src/webhook.js');
 const { FlowRegistry } = await import('../src/flows.js');
 
 // ---- Minimal in-memory DB for the onboarding queries ----------------------
-interface OnboardingRow { student_name: string | null; onboarded_at: Date | null; name_requested_at: Date | null }
+interface OnboardingRow { student_name: string | null; onboarded_at: Date | null; name_requested_at: Date | null; quiz_prompted_at?: Date | null; quiz_opt_in?: boolean | null }
 function memoryDb() {
   const onboarding = new Map<string, OnboardingRow>();
   const contacts = new Map<string, string>();
+  const quizOptIn = new Map<string, boolean>();
   const finder = new Map<string, { step: string; postcode: string | null; suburb: string | null; provider_type: string | null }>();
   const db = {
     onboarding,
     contacts,
+    quizOptIn,
     finder,
     log: [] as string[],
     async query(sql: string, values: unknown[] = []) {
@@ -67,6 +71,29 @@ function memoryDb() {
         const row = onboarding.get(values[0] as string)!;
         row.name_requested_at = new Date();
         return { rowCount: 1, rows: [{ student_name: row.student_name, onboarded_at: row.onboarded_at }] };
+      }
+      if (s.includes('quiz_prompted_at > now()')) {
+        const row = onboarding.get(values[0] as string);
+        if (!row?.quiz_prompted_at) return { rowCount: 0, rows: [] };
+        return { rowCount: 1, rows: [{ pending: true }] };
+      }
+      if (s.includes('SET quiz_prompted_at = now()')) {
+        const row = onboarding.get(values[0] as string);
+        if (row) row.quiz_prompted_at = new Date();
+        return { rowCount: row ? 1 : 0, rows: [] };
+      }
+      if (s.includes('SET quiz_prompted_at = NULL')) {
+        const row = onboarding.get(values[0] as string);
+        if (row) {
+          row.quiz_prompted_at = null;
+          if (s.includes('quiz_invite_opted_in_at = now()')) row.quiz_opt_in = true;
+          if (s.includes('quiz_invite_opted_out_at = now()')) row.quiz_opt_in = false;
+        }
+        return { rowCount: row ? 1 : 0, rows: [] };
+      }
+      if (s.startsWith('UPDATE contacts SET quiz_opted_in')) {
+        quizOptIn.set(values[0] as string, values[1] as boolean);
+        return { rowCount: 1, rows: [] };
       }
       if (s.includes('AS pending')) {
         const row = onboarding.get(values[0] as string);
@@ -153,6 +180,37 @@ describe('self-service onboarding over WhatsApp', () => {
     expect(db.contacts.get('contact-1')).toBe('Priya Sharma');
     expect(db.onboarding.get('contact-1')?.onboarded_at).toBeInstanceOf(Date);
     expect(db.onboarding.get('contact-1')?.name_requested_at).toBeNull();
+  });
+
+  it('after onboarding asks to opt into the quiz (buttons) and records the answer', async () => {
+    const db = memoryDb();
+    await say(db, 'onboard');
+    const [done, ask] = await say(db, 'Priya');
+    expect(done).toMatch(/You're onboarded, Priya/);
+    expect(ask).toMatch(/want to join the OSHC quiz/);
+    expect(ask).toMatch(/quiz_optin:yes\|Yes, opt me in/);
+    expect(ask).toMatch(/quiz_optin:no\|Not now/);
+
+    const [yes] = await say(db, 'Yes, opt me in', 'quiz_optin:yes');
+    expect(yes).toMatch(/You're in!/);
+    expect(db.quizOptIn.get('contact-1')).toBe(true);
+    expect(db.onboarding.get('contact-1')?.quiz_opt_in).toBe(true);
+    expect(db.onboarding.get('contact-1')?.quiz_prompted_at).toBeNull();
+  });
+
+  it('typed "no" declines; anything else just moves on', async () => {
+    const db = memoryDb();
+    await say(db, 'onboard');
+    await say(db, 'Mei Lin');
+    expect((await say(db, 'no'))[0]).toMatch(/No problem\. Reply \*QUIZ\*/);
+    expect(db.quizOptIn.get('contact-1')).toBe(false);
+
+    const db2 = memoryDb();
+    await say(db2, 'onboard');
+    await say(db2, 'Mei Lin');
+    const [menu] = await say(db2, 'hello');
+    expect(menu).toMatch(/Medibank OSHC assistant/);
+    expect(db2.onboarding.get('contact-1')?.quiz_prompted_at).toBeNull();
   });
 
   it('re-prompts on a non-name and lets questions through', async () => {

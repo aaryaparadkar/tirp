@@ -7,6 +7,13 @@ import {
   withdrawArrivalQuizConsent,
 } from './onboarding/service.js';
 import {
+  QUIZ_OPTIN_NO,
+  QUIZ_OPTIN_YES,
+  answerQuizPrompt,
+  clearQuizPrompt,
+  hasPendingQuizPrompt,
+  markQuizPrompted,
+  parseQuizOptIn,
   clearNameRequest,
   completeSelfOnboarding,
   hasPendingNameRequest,
@@ -258,6 +265,22 @@ async function reply(
   await saveTurn(db, contact.id, 'outbound', body, meta);
 }
 
+/** Ask "opt into the quiz?" with two buttons; plain text if buttons fail. */
+async function askQuizOptIn(db: Database, contact: Contact, lang: SupportedLanguage): Promise<void> {
+  const copy = onboardingCopy(lang);
+  await markQuizPrompted(db, contact.id);
+  const kapso = await import('./kapso.js');
+  try {
+    await kapso.sendButtons(catalogueConfig.phoneNumberId, contact.phone, copy.quizAsk, [
+      { id: QUIZ_OPTIN_YES, title: copy.quizYesButton },
+      { id: QUIZ_OPTIN_NO, title: copy.quizNoButton },
+    ]);
+  } catch {
+    await sendAnswer(catalogueConfig.phoneNumberId, contact.phone, `${copy.quizAsk}\n\nReply *YES* or *NO*.`);
+  }
+  await saveTurn(db, contact.id, 'outbound', copy.quizAsk, { intent: 'onboarding_quiz_prompt', language: lang });
+}
+
 /**
  * Self-service onboarding: ONBOARD → "what's your name?" → name → done.
  * Returns true when the message was consumed by onboarding.
@@ -266,6 +289,7 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
   const copy = onboardingCopy(lang);
   if (isOnboardCommand(text)) {
     try {
+      await clearQuizPrompt(db, contact.id);
       const state = await startSelfOnboarding(db, contact.id);
       const body = state.onboarded && state.studentName ? copy.askNameAgain(state.studentName) : copy.askName;
       await reply(db, contact, body, { intent: 'onboarding_name_request', language: lang });
@@ -274,6 +298,25 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
       await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
     }
     return true;
+  }
+
+  // Answer to "want to join the quiz?" (buttons, or typed yes/no).
+  const isQuizButton = /^quiz_optin:(yes|no)$/i.test(text.trim());
+  if (isQuizButton || (await hasPendingQuizPrompt(db, contact.id))) {
+    const answer = parseQuizOptIn(text);
+    if (answer !== null) {
+      try {
+        await answerQuizPrompt(db, contact.id, answer);
+        await reply(db, contact, answer ? copy.quizYes : copy.quizNo, { intent: 'onboarding_quiz_optin', language: lang });
+      } catch (error) {
+        console.error('[onboarding] quiz opt-in failed', error);
+        await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
+      }
+      return true;
+    }
+    // Anything else: the student moved on — close the question, route normally.
+    await clearQuizPrompt(db, contact.id);
+    return false;
   }
 
   if (!(await hasPendingNameRequest(db, contact.id))) return false;
@@ -297,6 +340,7 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
     await completeSelfOnboarding(db, contact.id, name);
     contact.name = name;
     await reply(db, contact, copy.done(name), { intent: 'onboarding_complete', language: lang });
+    await askQuizOptIn(db, contact, lang);
   } catch (error) {
     console.error('[onboarding] completion failed', error);
     await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
