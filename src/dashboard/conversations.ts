@@ -114,6 +114,12 @@ function summaryLines(row: ConversationRow, messages: MessageRow[]): string[] {
   if (sources.length > 0) {
     lines.push(`Grounded in ${sources.length} knowledge-base source${sources.length === 1 ? '' : 's'}.`);
   }
+  if (row.emergency_at) {
+    const times = Number(row.emergency_count || 1);
+    lines.unshift(
+      `EMERGENCY: the assistant showed the Call 000 button${times > 1 ? ` ${times} times` : ''} (last at ${new Date(row.emergency_at).toISOString()}). Check on this student.`,
+    );
+  }
   if (row.has_error) lines.push('A delivery or model error is attached to this thread.');
   if (row.unread_count > 0) lines.push(`${row.unread_count} unread messages await a human.`);
   return lines;
@@ -275,7 +281,8 @@ export async function escalateHandler(
 export async function notifyDeskSupport(
   row: ConversationRow,
   note: string | null,
-  auth: AuthContext,
+  auth: AuthContext | null,
+  opts: { event?: 'escalated' | 'emergency' } = {},
 ): Promise<boolean> {
   const endpoint = (process.env.DASHBOARD_DESK_WEBHOOK_URL || '').trim();
   if (!endpoint) return false;
@@ -288,7 +295,8 @@ export async function notifyDeskSupport(
         status: row.status,
         intent: row.current_intent,
         note: note ?? undefined,
-        raisedBy: auth.operator.name,
+        event: opts.event ?? 'escalated',
+        raisedBy: auth ? auth.operator.name : 'OSHC assistant (automatic)',
       }),
     });
     return response.ok;

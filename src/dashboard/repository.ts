@@ -45,6 +45,7 @@ export interface InsertMessageInput {
 const CONVERSATION_SELECT = `
   SELECT c.id, c.status, c.handling_mode, c.current_intent, c.last_activity_at,
          c.first_message_at, c.message_count, c.unread_count, c.has_error,
+         c.emergency_at, c.emergency_count,
          ct.id AS contact_id, ct.name AS contact_name, ct.phone AS contact_phone,
          ct.preferred_language, ct.opted_in,
          m.body AS last_body, m.direction AS last_direction
@@ -272,6 +273,7 @@ export async function listConversations(
   if (query.handling !== 'all') conditions.push(`c.handling_mode = $${values.push(query.handling)}`);
   if (query.language !== 'all') conditions.push(`ct.preferred_language = $${values.push(query.language)}`);
   if (query.hasError === 'with-error') conditions.push('c.has_error = TRUE');
+  if (query.emergency === 'only') conditions.push('c.emergency_at IS NOT NULL');
   if (query.direction !== 'all') {
     conditions.push(`m.direction = $${values.push(query.direction)}`);
   }
@@ -445,6 +447,50 @@ export async function escalateConversation(
       note,
     });
   });
+}
+
+/**
+ * The assistant showed this contact the "Call 000" button. Flag the
+ * conversation for operators: escalated, needs review, timestamped, audited.
+ * Bot replies are NOT paused — the student can keep getting help.
+ */
+export async function flagEmergency(
+  db: Database,
+  contactId: string,
+  opts: { source: string; at?: string },
+): Promise<string> {
+  const at = opts.at || now();
+  const conversationId = await ensureConversationForContact(db, contactId, { at, intent: 'emergency' });
+  await withTransaction(db, async (tx) => {
+    const current = await tx.query<{ handling_mode: string; status: ConversationStatus }>(
+      'SELECT handling_mode, status FROM conversations WHERE id = $1 FOR UPDATE',
+      [conversationId],
+    );
+    const previous = current.rows[0];
+    if (!previous) return;
+    const nextStatus: ConversationStatus = previous.status === 'resolved' ? 'resolved' : 'needs_review';
+    await tx.query(
+      `UPDATE conversations
+          SET emergency_at = $2,
+              emergency_count = emergency_count + 1,
+              handling_mode = 'escalated',
+              escalated_at = COALESCE(escalated_at, $2),
+              status = $3,
+              current_intent = 'emergency',
+              updated_at = $2
+        WHERE id = $1`,
+      [conversationId, at, nextStatus],
+    );
+    await insertConversationEvent(tx, {
+      conversationId,
+      eventType: 'emergency_call_shown',
+      actorType: 'system',
+      previousValue: { handlingMode: previous.handling_mode, status: previous.status },
+      nextValue: { handlingMode: 'escalated', status: nextStatus },
+      note: `Assistant showed the Call 000 button (${opts.source}).`,
+    });
+  });
+  return conversationId;
 }
 
 /* ------------------------------------------------------ trigger executions */

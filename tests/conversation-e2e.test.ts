@@ -50,8 +50,12 @@ function memoryDb() {
     onboarding,
     contacts,
     finder,
+    log: [] as string[],
     async query(sql: string, values: unknown[] = []) {
       const s = sql.replace(/\s+/g, ' ');
+      db.log.push(s);
+      if (s.includes('SELECT id FROM conversations WHERE contact_id')) return { rowCount: 1, rows: [{ id: 'conv-1' }] };
+      if (s.includes('SELECT handling_mode, status FROM conversations')) return { rowCount: 1, rows: [{ handling_mode: 'ai', status: 'in_progress' }] };
       if (s.startsWith('INSERT INTO webhook_events')) return { rowCount: 1, rows: [] };
       if (s.startsWith('UPDATE webhook_events') || s.startsWith('DELETE FROM webhook_events')) return { rowCount: 1, rows: [] };
       if (s.includes('INSERT INTO onboarding_state')) {
@@ -222,6 +226,9 @@ describe('emergency button', () => {
     const button = sent.find((m) => m.kind === 'call-button');
     expect(button?.label).toBe('Call 000');
     expect(button?.url).toBe('https://oshc.example.com/call/000?lang=en');
+    // Flagged for the operator console: emergency timestamp, escalated, audited.
+    expect(db.log.some((q) => q.includes('SET emergency_at = $2') && q.includes("handling_mode = 'escalated'"))).toBe(true);
+    expect(db.log.some((q) => q.includes('INSERT INTO conversation_events'))).toBe(true);
   });
 
   it('cover questions about ambulances are not emergencies', async () => {

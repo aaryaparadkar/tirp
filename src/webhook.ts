@@ -304,6 +304,27 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
   return true;
 }
 
+/**
+ * Show the Call 000 button AND flag the conversation for operators
+ * (escalated + emergency timestamp + audit event + desk webhook).
+ * Flagging is best-effort: it must never delay or block the 000 message.
+ */
+async function respondToEmergency(db: Database, contact: Contact, lang: SupportedLanguage, source: string): Promise<void> {
+  await sendEmergency(catalogueConfig.phoneNumberId, contact.phone, lang);
+  await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
+  try {
+    const { flagEmergency, getConversation } = await import('./dashboard/repository.js');
+    const conversationId = await flagEmergency(db, contact.id, { source });
+    const row = await getConversation(db, conversationId);
+    if (row) {
+      const { notifyDeskSupport } = await import('./dashboard/conversations.js');
+      await notifyDeskSupport(row, `Call 000 button shown to the student (${source}).`, null, { event: 'emergency' });
+    }
+  } catch (error) {
+    console.error('[emergency] dashboard flag failed', error);
+  }
+}
+
 async function handleText(
   db: Database,
   contact: Awaited<ReturnType<typeof ensureContact>>,
@@ -322,8 +343,7 @@ async function handleText(
   // 1) Emergency always wins — no LLM. Detection runs AFTER language lock so the
   // reply (including a first-message emergency) uses the user's language.
   if (isEmergency(text) || resolveMenuSelection(text) === 'emergency') {
-    await sendEmergency(phoneId, contact.phone, lang);
-    await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
+    await respondToEmergency(db, contact, lang, 'safety-keywords');
     return;
   }
 
@@ -449,8 +469,7 @@ async function handleText(
   const menuIntent = isLanguageNeutralSelection(text) ? resolveMenuSelection(text) : topicCommandIntent(text);
   if (menuIntent) {
     if (menuIntent === 'emergency') {
-      await sendEmergency(phoneId, contact.phone, lang);
-      await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
+      await respondToEmergency(db, contact, lang, 'menu-option-9');
       return;
     }
     // "Find a doctor or clinic" asks for a postcode and searches Medibank live.
@@ -489,8 +508,7 @@ async function handleText(
   const started = Date.now();
   const classification = await classifyIntent(text);
   if (classification.intent === 'emergency') {
-    await sendEmergency(phoneId, contact.phone, lang);
-    await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
+    await respondToEmergency(db, contact, lang, 'intent-classifier');
     return;
   }
   const history = await recentTurns(db, contact.id);

@@ -82,6 +82,7 @@ export interface ConversationListQuery {
   direction: 'all' | 'inbound' | 'outbound';
   handling: 'all' | HandlingMode;
   hasError: 'all' | 'with-error';
+  emergency: 'all' | 'only';
   range: RangeId;
   sort: SortId;
 }
@@ -107,6 +108,7 @@ export function parseConversationQuery(url: URL): ConversationListQuery {
     direction: oneOf(params.get('direction'), ['inbound', 'outbound'] as const),
     handling: oneOf(params.get('handling'), HANDLING_MODES),
     hasError: params.get('has_error') === 'with-error' ? 'with-error' : 'all',
+    emergency: params.get('emergency') === 'only' ? 'only' : 'all',
     range: parseRange(params.get('range')),
     sort: oneOf(params.get('sort'), SORT_IDS) === 'all' ? 'recent' : (params.get('sort') as SortId),
   };

@@ -63,6 +63,9 @@ export interface ConversationSummaryDto {
   unreadCount: number;
   hasError: boolean;
   language: DashboardLanguage;
+  /** When the assistant last showed the Call 000 button; null if never. */
+  emergencyAt: string | null;
+  emergencyCount: number;
 }
 
 export interface MessageDto {
@@ -106,6 +109,8 @@ export type ConversationRow = {
   message_count: number;
   unread_count: number;
   has_error: boolean;
+  emergency_at?: string | null;
+  emergency_count?: number | null;
   contact_id: string;
   contact_name: string | null;
   contact_phone: string | null;
@@ -240,6 +245,8 @@ export function toConversationSummary(
     unreadCount: Number(row.unread_count || 0),
     hasError: Boolean(row.has_error),
     language,
+    emergencyAt: row.emergency_at ? new Date(row.emergency_at).toISOString() : null,
+    emergencyCount: Number(row.emergency_count || 0),
   };
 }
 

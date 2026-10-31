@@ -69,8 +69,8 @@ export function triggerDefinitions(): TriggerDefinition[] {
         {
           id: 'phone',
           kind: 'phone',
-          label: 'Contact phone number',
-          description: 'E.164 format such as +61412345620.',
+          label: 'Contact',
+          description: 'Pick a contact, or choose "Enter a number" for someone new (E.164, e.g. +61412345620).',
           required: true,
         },
       ],
@@ -92,8 +92,8 @@ export function triggerDefinitions(): TriggerDefinition[] {
         {
           id: 'phone',
           kind: 'phone',
-          label: 'Contact phone number',
-          description: 'E.164 format such as +61498331177.',
+          label: 'Contact',
+          description: 'Pick a contact, or choose "Enter a number" for someone new (E.164, e.g. +61498331177).',
           required: true,
         },
       ],
@@ -113,8 +113,8 @@ export function triggerDefinitions(): TriggerDefinition[] {
         {
           id: 'phone',
           kind: 'phone',
-          label: 'Contact phone number',
-          description: 'E.164 format such as +61455042891.',
+          label: 'Contact',
+          description: 'Pick a contact, or choose "Enter a number" for someone new (E.164, e.g. +61455042891).',
           required: true,
         },
         {
@@ -207,10 +207,25 @@ export async function runTriggerHandler(
 
   if (definition.fields.some((field) => field.kind === 'phone')) {
     phone = normalizePhone(payload.phone);
+    // The console picks contacts by conversation (it only ever sees masked
+    // numbers); resolve the real number server-side.
+    const pickedConversation =
+      typeof payload.conversationId === 'string' ? payload.conversationId.trim() : '';
+    if (!phone && pickedConversation) {
+      const row = await repo.getConversation(db, pickedConversation);
+      phone = row ? normalizePhone(row.contact_phone) : null;
+      if (row) conversationId = row.id;
+      if (!phone) {
+        throw new DashboardError({
+          code: 'validation',
+          message: 'That contact has no usable WhatsApp number. Enter one manually.',
+        });
+      }
+    }
     if (!phone) {
       throw new DashboardError({
         code: 'validation',
-        message: 'A valid E.164 phone number is required (for example +61412345620).',
+        message: 'Pick a contact or enter a valid E.164 phone number (for example +61412345620).',
       });
     }
   }
