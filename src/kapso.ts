@@ -64,6 +64,24 @@ export async function sendFormattedText(
   return results;
 }
 
+/** WhatsApp interactive limits (Cloud API). */
+export const WA_LIMITS = { rowTitle: 24, rowDescription: 72, buttonTitle: 20, listButton: 20, sectionTitle: 24, footer: 60, body: 1024 } as const;
+
+/**
+ * Fit text to a WhatsApp field limit without cutting mid-word:
+ * "Find healthcare / providers" → "Find healthcare…", never "Find healthcare / provid".
+ * Labels should already fit; this is the safety net.
+ */
+export function fitTitle(text: string, max: number): string {
+  const value = (text || '').replace(/\s+/g, ' ').trim();
+  const chars = [...value]; // count code points, not UTF-16 units (CJK/emoji)
+  if (chars.length <= max) return value;
+  const cut = chars.slice(0, max - 1).join('');
+  const space = cut.lastIndexOf(' ');
+  const base = space >= Math.floor(max / 3) ? cut.slice(0, space) : cut;
+  return `${base.replace(/[\s/&,.:;–—-]+$/u, '')}…`;
+}
+
 export interface MenuButton {
   id: string;
   title: string;
@@ -81,8 +99,8 @@ export async function sendButtons(
     phoneNumberId,
     to: to.replace(/^\+/, ''),
     bodyText,
-    footerText,
-    buttons: buttons.slice(0, 3),
+    footerText: footerText ? fitTitle(footerText, WA_LIMITS.footer) : undefined,
+    buttons: buttons.slice(0, 3).map((b) => ({ ...b, title: fitTitle(b.title, WA_LIMITS.buttonTitle) })),
   });
 }
 
@@ -98,9 +116,17 @@ export async function sendList(
     phoneNumberId,
     to: to.replace(/^\+/, ''),
     bodyText,
-    buttonText,
-    sections,
-    footerText,
+    buttonText: fitTitle(buttonText, WA_LIMITS.listButton),
+    sections: sections.map((section) => ({
+      ...section,
+      ...(section.title ? { title: fitTitle(section.title, WA_LIMITS.sectionTitle) } : {}),
+      rows: section.rows.map((row) => ({
+        ...row,
+        title: fitTitle(row.title, WA_LIMITS.rowTitle),
+        ...(row.description ? { description: fitTitle(row.description, WA_LIMITS.rowDescription) } : {}),
+      })),
+    })),
+    footerText: footerText ? fitTitle(footerText, WA_LIMITS.footer) : undefined,
   });
 }
 

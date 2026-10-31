@@ -126,8 +126,8 @@ async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLa
       title: 'OSHC',
       rows: options.map((o) => ({
         id: `menu:${menuIdFor(o.intent)}`,
-        title: o.label.slice(0, 24),
-        description: o.description.slice(0, 72),
+        title: o.label,
+        description: o.description,
       })),
     },
   ];
@@ -140,7 +140,7 @@ async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLa
     const buttons = options.slice(0, 3);
     await kapso.sendButtons(phoneNumberId, to, body.slice(0, 900), buttons.map((o) => ({
       id: `menu:${menuIdFor(o.intent)}`,
-      title: o.label.slice(0, 20),
+      title: o.label,
     })), t(lang, 'replyMenuHint'));
     return;
   } catch { /* fall through */ }

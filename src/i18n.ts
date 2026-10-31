@@ -35,15 +35,15 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `Emergency? Call *000* now.`,
     fullMenu:
       `*All topics:*\n\n` +
-      `1. Understanding your OSHC cover (Essentials vs Comprehensive)\n` +
-      `2. Claims and reimbursements\n` +
-      `3. Finding healthcare and direct-billing providers\n` +
+      `1. Understand my cover (Essentials vs Comprehensive)\n` +
+      `2. Make a claim and get paid back\n` +
+      `3. Find a doctor or clinic near you\n` +
       `4. Pharmacy and medicines\n` +
-      `5. Visa requirements and waiting periods\n` +
-      `6. Student rewards and benefits\n` +
+      `5. Visa rules and waiting periods\n` +
+      `6. Student rewards\n` +
       `7. Important Medibank updates\n` +
       `8. Forms and member guides\n` +
-      `9. Urgent health issues or accidents\n\n` +
+      `9. Urgent help — call 000\n\n` +
       `Reply with a *number (1-9)*, tap an option, or type your question.\n` +
       `I give general information from Medibank OSHC sources only.`,
     disclaimer:
@@ -113,15 +113,15 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `紧急情况请立即拨打 *000*。`,
     fullMenu:
       `*全部主题：*\n\n` +
-      `1. 了解你的 OSHC 保障范围（Essentials 与 Comprehensive）\n` +
-      `2. 理赔和报销\n` +
-      `3. 查找医疗服务和直付（direct billing）医疗机构\n` +
+      `1. 了解保障范围（Essentials 与 Comprehensive）\n` +
+      `2. 申请理赔和报销\n` +
+      `3. 查找附近的医生或诊所\n` +
       `4. 药房和处方药\n` +
       `5. 签证要求和等待期\n` +
       `6. 学生奖励和福利\n` +
       `7. Medibank 重要更新\n` +
       `8. 表格和会员指南\n` +
-      `9. 紧急健康问题或事故\n\n` +
+      `9. 紧急求助：拨打 000\n\n` +
       `请回复*数字（1-9）*、点击选项，或直接输入问题。`,
     disclaimer: '仅为来自 Medibank OSHC 资料的一般信息，不是医疗建议。如需确认个人保障或理赔结果，请联系 Medibank OSHC。',
     support:
@@ -190,13 +190,13 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `*Todos los temas:*\n\n` +
       `1. Entender tu cobertura OSHC (Essentials y Comprehensive)\n` +
       `2. Reclamaciones y reembolsos\n` +
-      `3. Buscar atención médica y proveedores con facturación directa\n` +
+      `3. Buscar un médico o clínica cerca de ti\n` +
       `4. Farmacias y medicamentos\n` +
       `5. Requisitos de visa y períodos de espera\n` +
       `6. Recompensas y beneficios para estudiantes\n` +
       `7. Actualizaciones importantes de Medibank\n` +
       `8. Formularios y guías para miembros\n` +
-      `9. Problemas de salud urgentes o accidentes\n\n` +
+      `9. Urgencias: llama al 000\n\n` +
       `Responde con un *número (1-9)*, elige una opción o escribe tu pregunta.`,
     disclaimer: 'Solo información general de fuentes de Medibank OSHC. No es asesoramiento médico. Para decisiones sobre tu cobertura o reclamación, contacta con Medibank OSHC.',
     support:
@@ -262,39 +262,45 @@ export interface LocalizedMenuOption {
   description: string;
 }
 
+/**
+ * Menu rows. WhatsApp hard limits: list-row title 24 chars, button title 20,
+ * row description 72. Labels are written to fit 20 so the same text works for
+ * the list AND the 3-button fallback — nothing gets cut mid-word.
+ * (tests/menu-labels.test.ts enforces this.)
+ */
 const MENU_LABELS: Record<SupportedLanguage, Array<{ label: string; description: string }>> = {
   en: [
-    { label: 'Understand my OSHC cover', description: 'Essentials vs Comprehensive inclusions' },
-    { label: 'Claims and reimbursements', description: 'How to claim and get paid back' },
-    { label: 'Find healthcare / providers', description: 'GPs, direct billing, hospitals' },
-    { label: 'Pharmacy and medicines', description: 'Prescriptions and limits' },
-    { label: 'Visa and waiting periods', description: 'Subclass 500 and waiting times' },
-    { label: 'Student rewards', description: 'Rewards and benefits' },
-    { label: 'Important updates', description: 'Current Medibank updates' },
-    { label: 'Forms and member guides', description: 'Forms, PDFs, cover summaries' },
-    { label: 'Urgent health / accident', description: 'Call 000 immediately' },
+    { label: 'Understand my cover', description: 'Essentials vs Comprehensive — what is included' },
+    { label: 'Make a claim', description: 'Claim online and get your money back' },
+    { label: 'Find a doctor/clinic', description: 'GPs, direct-billing clinics and hospitals near you' },
+    { label: 'Pharmacy & medicines', description: 'Prescriptions, costs and limits' },
+    { label: 'Visa & waiting times', description: 'Student visa (500) rules and waiting periods' },
+    { label: 'Student rewards', description: 'Medibank rewards and perks for students' },
+    { label: 'Important updates', description: 'Latest official Medibank news' },
+    { label: 'Forms & guides', description: 'Claim forms, member guide, cover summaries' },
+    { label: 'Urgent help (000)', description: 'Emergency or accident — call 000 now' },
   ],
   'zh-CN': [
-    { label: '了解 OSHC 保障', description: 'Essentials 与 Comprehensive 对比' },
-    { label: '理赔和报销', description: '如何理赔并拿回费用' },
-    { label: '查找医疗服务', description: 'GP、直付诊所、医院' },
-    { label: '药房和处方药', description: '处方药额度和限制' },
-    { label: '签证和等待期', description: '500 签证和等待时间' },
-    { label: '学生奖励', description: '奖励和福利' },
-    { label: '重要更新', description: 'Medibank 最新通知' },
-    { label: '表格和会员指南', description: '表格、PDF、保障摘要' },
-    { label: '紧急情况求助', description: '立即拨打 000' },
+    { label: '了解保障范围', description: 'Essentials 与 Comprehensive：包括什么' },
+    { label: '申请理赔', description: '在线理赔，拿回费用' },
+    { label: '查找医生或诊所', description: '附近的 GP、直付诊所和医院' },
+    { label: '药房和处方药', description: '处方药费用和限额' },
+    { label: '签证和等待期', description: '学生签证（500）要求和等待期' },
+    { label: '学生奖励', description: 'Medibank 学生奖励和福利' },
+    { label: '重要更新', description: 'Medibank 官方最新消息' },
+    { label: '表格和指南', description: '理赔表、会员指南、保障摘要' },
+    { label: '紧急求助（000）', description: '紧急情况或事故：立即拨打 000' },
   ],
   es: [
-    { label: 'Entender mi cobertura', description: 'Essentials y Comprehensive' },
-    { label: 'Reclamos y reembolsos', description: 'Cómo reclamar y recibir pagos' },
-    { label: 'Buscar atención médica', description: 'GP, facturación directa' },
-    { label: 'Farmacia y medicamentos', description: 'Recetas y límites' },
-    { label: 'Visa y períodos de espera', description: 'Subclase 500 y esperas' },
-    { label: 'Recompensas estudiantiles', description: 'Recompensas y beneficios' },
-    { label: 'Actualizaciones', description: 'Noticias actuales de Medibank' },
-    { label: 'Formularios y guías', description: 'Formularios, PDF, resúmenes' },
-    { label: 'Salud urgente / accidente', description: 'Llama al 000 ahora' },
+    { label: 'Entender cobertura', description: 'Essentials y Comprehensive: qué incluye' },
+    { label: 'Hacer un reclamo', description: 'Reclama en línea y recupera tu dinero' },
+    { label: 'Buscar médico', description: 'GP, clínicas con facturación directa y hospitales' },
+    { label: 'Farmacia y recetas', description: 'Medicamentos con receta, costos y límites' },
+    { label: 'Visa y esperas', description: 'Visa de estudiante (500) y períodos de espera' },
+    { label: 'Recompensas', description: 'Recompensas y beneficios para estudiantes' },
+    { label: 'Actualizaciones', description: 'Últimas noticias oficiales de Medibank' },
+    { label: 'Formularios y guías', description: 'Formularios, guía del miembro, resúmenes' },
+    { label: 'Urgencia (000)', description: 'Emergencia o accidente: llama al 000 ahora' },
   ],
 };
 

@@ -35,7 +35,7 @@ export const PROVIDER_TYPES: ProviderType[] = [
   { key: 'gp', label: 'General Practitioners (GP)', serviceType: 'GENERAL PRACTICE CLINIC', short: 'GP (doctor)', description: 'General practitioners for everyday health issues' },
   { key: 'dbc', label: 'OSHC Direct Billing Clinic', serviceType: 'GENERAL PRACTICE CLINIC', short: 'Direct Billing Clinic', description: 'Clinics that bill Medibank directly — little or no upfront cost' },
   { key: 'hospital', label: 'Hospitals', serviceType: 'Hospitals', short: 'Hospital', description: 'Hospitals and day facilities' },
-  { key: 'afterhours', label: 'Medical Deputising Services (after hours doctor home visits)', serviceType: 'MEDICAL DEPUTISING SERVICE', short: 'After-hours home doctor', description: 'A doctor visits you at home after hours' },
+  { key: 'afterhours', label: 'Medical Deputising Services (after hours doctor home visits)', serviceType: 'MEDICAL DEPUTISING SERVICE', short: 'After-hours home GP', description: 'A doctor visits you at home after hours' },
 ];
 
 export function providerType(key: ProviderTypeKey): ProviderType {

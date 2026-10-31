@@ -306,8 +306,8 @@ async function askType(db: Database, contact: Contact, place: Place, lang: Suppo
     try {
       await deps.sendTypeList(c.askTypeList(at), c.chooseType, PROVIDER_TYPES.map((t, i) => ({
         id: `provider:${t.key}`,
-        title: `${i + 1}. ${t.short}`.slice(0, 24),
-        description: t.description.slice(0, 72),
+        title: `${i + 1}. ${t.short}`,
+        description: t.description,
       })));
       return c.askTypeList(at);
     } catch { /* fall back to text */ }
