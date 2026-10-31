@@ -31,7 +31,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. Pharmacy and medicines\n` +
       `5. Visa or waiting periods\n\n` +
       `Reply with a *number (1-5)* or type your question.\n` +
-      `Reply *HELP* for a person, *MENU* to see this menu again.\n` +
+      `Reply *HELP* for the 24/7 support line, *MENU* to see this menu again.\n` +
       `Emergency? Call *000* now.`,
     fullMenu:
       `*All topics:*\n\n` +
@@ -109,7 +109,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. 药房和处方药\n` +
       `5. 签证或等待期\n\n` +
       `请回复*数字（1-5）*，或直接输入问题。\n` +
-      `回复*帮助*找人工，回复*菜单*再次查看此菜单。\n` +
+      `回复*帮助*获取 24/7 支持热线，回复*菜单*再次查看此菜单。\n` +
       `紧急情况请立即拨打 *000*。`,
     fullMenu:
       `*全部主题：*\n\n` +
@@ -184,7 +184,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. Farmacia y medicamentos\n` +
       `5. Visa o períodos de espera\n\n` +
       `Responde con un *número (1-5)* o escribe tu pregunta.\n` +
-      `Responde *AYUDA* para una persona, *MENÚ* para ver este menú otra vez.\n` +
+      `Responde *AYUDA* para la línea de apoyo 24/7, *MENÚ* para ver este menú otra vez.\n` +
       `¿Emergencia? Llama al *000* ahora.`,
     fullMenu:
       `*Todos los temas:*\n\n` +

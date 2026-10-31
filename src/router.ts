@@ -295,13 +295,13 @@ const NEXT_STEP_BY_INTENT: Record<string, Record<SupportedLanguage, string>> = {
     es: '*Siguiente paso:* responde REEMBOLSO para saber cuándo recibes el pago.',
   },
   reimbursements: {
-    en: '*Next step:* reply CLAIM for how to submit, or HELP for a person.',
-    'zh-CN': '*下一步：*回复“理赔”看提交方式，或回复“帮助”找人工。',
+    en: '*Next step:* reply CLAIM for how to submit, or HELP for the 24/7 support line.',
+    'zh-CN': '*下一步：*回复“理赔”看提交方式，或回复“帮助”获取 24/7 支持热线。',
     es: '*Siguiente paso:* responde RECLAMO o AYUDA.',
   },
   providers: {
-    en: '*Next step:* reply PHARMACY for medicines, or HELP for a person.',
-    'zh-CN': '*下一步：*问药品请回复“药房”，找人工请回复“帮助”。',
+    en: '*Next step:* reply PHARMACY for medicines, or HELP for the 24/7 support line.',
+    'zh-CN': '*下一步：*问药品请回复“药房”，或回复“帮助”获取 24/7 支持热线。',
     es: '*Siguiente paso:* responde FARMACIA o AYUDA.',
   },
   pharmacy: {

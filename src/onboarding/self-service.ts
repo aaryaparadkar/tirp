@@ -157,7 +157,7 @@ const COPY: Record<SupportedLanguage, OnboardingCopy> = {
   en: {
     quizAsk:
       `*One last thing — want to join the OSHC quiz?* 🧠\n\n` +
-      `Short, friendly questions that teach you how to use your cover in Australia (GPs, claims, pharmacies, emergencies). Earn XP as you go.`,
+      `Short, friendly questions that teach you how to use your cover in Australia (GPs, claims, pharmacies, emergencies). Earn XP as you go — collect all 320 XP to redeem a *free health checkup*.`,
     quizYesButton: 'Yes, opt me in',
     quizNoButton: 'Not now',
     quizYes:
@@ -175,7 +175,7 @@ const COPY: Record<SupportedLanguage, OnboardingCopy> = {
     failed: `Sorry, I couldn't finish onboarding right now. Please reply ONBOARD to try again in a minute.`,
   },
   'zh-CN': {
-    quizAsk: `*最后一步：想参加 OSHC 小测验吗？* 🧠\n\n简短有趣的问题，教你在澳大利亚如何使用保险（看医生、理赔、药房、紧急情况），还能赚取 XP。`,
+    quizAsk: `*最后一步：想参加 OSHC 小测验吗？* 🧠\n\n简短有趣的问题，教你在澳大利亚如何使用保险（看医生、理赔、药房、紧急情况），赚取 XP，集满 320 XP 即可兑换*免费健康检查*。`,
     quizYesButton: '好的，加入',
     quizNoButton: '以后再说',
     quizYes: `*已加入！* ✅ 你会收到测验邀请，包括抵达后几天的一次。\n\n随时回复 *QUIZ* 开始，或回复*你好*查看主菜单。`,
@@ -190,7 +190,7 @@ const COPY: Record<SupportedLanguage, OnboardingCopy> = {
     failed: `抱歉，暂时无法完成注册。请稍后回复 ONBOARD 重试。`,
   },
   es: {
-    quizAsk: `*Una última cosa: ¿quieres unirte al quiz de OSHC?* 🧠\n\nPreguntas cortas que te enseñan a usar tu cobertura en Australia (médicos, reclamos, farmacias, emergencias). Ganas XP.`,
+    quizAsk: `*Una última cosa: ¿quieres unirte al quiz de OSHC?* 🧠\n\nPreguntas cortas que te enseñan a usar tu cobertura en Australia (médicos, reclamos, farmacias, emergencias). Gana XP: reúne 320 XP y canjéalos por un *chequeo de salud gratis*.`,
     quizYesButton: 'Sí, inscríbeme',
     quizNoButton: 'Ahora no',
     quizYes: `*¡Listo!* ✅ Recibirás invitaciones al quiz, incluida una pocos días después de tu llegada.\n\nResponde *QUIZ* cuando quieras para empezar, o *HOLA* para el menú principal.`,

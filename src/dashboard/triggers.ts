@@ -57,7 +57,7 @@ export function triggerDefinitions(): TriggerDefinition[] {
       id: 'quiz',
       name: 'Start quiz session',
       description:
-        'Delivers the OSHC quiz to a contact by phone number. Validates E.164, rate-limits to 5 starts per minute per contact, and resumes an active session instead of starting a new one.',
+        'Delivers the next OSHC quiz session to a contact as tap-to-answer questions. Students earn XP towards a free health checkup. Rate-limited to 5 starts per minute per contact; resumes an active session instead of starting a new one.',
       intendedUse: 'Kick off a weekly quiz for one student.',
       backendNote:
         'Executed server-side through the Kapso WhatsApp primitives. The browser never holds the provider key.',
@@ -124,28 +124,6 @@ export function triggerDefinitions(): TriggerDefinition[] {
           description: 'Plain text; sent as-is.',
           required: true,
           maxLength: 4000,
-        },
-      ],
-    },
-    {
-      id: 'escalate',
-      name: 'Escalate conversation',
-      description:
-        'Hands a conversation to the human support desk and stops AI replies until resolution.',
-      intendedUse:
-        'Human takeover when the assistant hits its limits or the contact asks for a person.',
-      backendNote:
-        'Marks the conversation as escalated and notifies the desk when DASHBOARD_DESK_WEBHOOK_URL is set.',
-      availability: 'available',
-      availabilityNote:
-        'Without DASHBOARD_DESK_WEBHOOK_URL the conversation is still marked escalated, and the run reports a partial result.',
-      fields: [
-        {
-          id: 'conversation',
-          kind: 'conversation',
-          label: 'Conversation',
-          description: 'Pick an open conversation.',
-          required: true,
         },
       ],
     },

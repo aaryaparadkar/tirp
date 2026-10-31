@@ -84,7 +84,7 @@ const GUIDES: Record<GuideKey, Record<SupportedLanguage, string> & { ids: string
     urls: [URL.claimOnline, URL.claimForm],
     en:
       `*How to make a claim*\n` +
-      `Claiming online is the fastest way — payments generally reach your bank account within 5 business days.\n\n` +
+      `Claiming online is the fastest way.\n\n` +
       `1. Log in to Online Member Services, or open the Online Claims Form.\n` +
       `2. Check your Australian bank account details are saved.\n` +
       `3. Enter your membership number and the service details.\n` +
@@ -93,10 +93,10 @@ const GUIDES: Record<GuideKey, Record<SupportedLanguage, string> & { ids: string
       `💡 At a direct-billing clinic you don't need to claim at all — they bill Medibank for you.\n\n` +
       `🔗 Claim online: ${URL.claimForm}\n` +
       `🔗 Step-by-step: ${URL.claimOnline}\n\n` +
-      `*Next step:* reply *3* to find a direct-billing clinic, or *HELP* for a person.`,
+      `*Next step:* reply *3* to find a direct-billing clinic, or *HELP* for the 24/7 support line.`,
     'zh-CN':
       `*如何理赔*\n` +
-      `在线理赔最快，款项一般在 5 个工作日内到达你的银行账户。\n\n` +
+      `在线理赔最快。\n\n` +
       `1. 登录 Online Member Services，或打开在线理赔表。\n` +
       `2. 确认已保存你的澳大利亚银行账户。\n` +
       `3. 填写会员号和就诊信息。\n` +
@@ -105,10 +105,10 @@ const GUIDES: Record<GuideKey, Record<SupportedLanguage, string> & { ids: string
       `💡 在直付（direct billing）诊所就诊无需自己理赔，诊所会直接向 Medibank 收费。\n\n` +
       `🔗 在线理赔：${URL.claimForm}\n` +
       `🔗 详细步骤：${URL.claimOnline}\n\n` +
-      `*下一步：*回复 *3* 查找直付诊所，或回复*帮助*找人工。`,
+      `*下一步：*回复 *3* 查找直付诊所，或回复*帮助*获取 24/7 支持热线。`,
     es:
       `*Cómo hacer un reclamo*\n` +
-      `Reclamar en línea es lo más rápido: el pago suele llegar a tu cuenta bancaria en 5 días hábiles.\n\n` +
+      `Reclamar en línea es lo más rápido.\n\n` +
       `1. Entra en Online Member Services o abre el formulario de reclamo en línea.\n` +
       `2. Comprueba que tu cuenta bancaria australiana esté guardada.\n` +
       `3. Escribe tu número de miembro y los datos del servicio.\n` +
@@ -117,7 +117,7 @@ const GUIDES: Record<GuideKey, Record<SupportedLanguage, string> & { ids: string
       `💡 En una clínica con facturación directa no necesitas reclamar: la clínica cobra a Medibank.\n\n` +
       `🔗 Reclamo en línea: ${URL.claimForm}\n` +
       `🔗 Paso a paso: ${URL.claimOnline}\n\n` +
-      `*Siguiente paso:* responde *3* para buscar una clínica con facturación directa o *AYUDA*.`,
+      `*Siguiente paso:* responde *3* para buscar una clínica con facturación directa o *AYUDA* para la línea de apoyo 24/7.`,
   },
   providers: {
     ids: ['10-getting-sick-in-australia.md', '15-oshc-provider-claims.md'],

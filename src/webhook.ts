@@ -232,6 +232,8 @@ function topicCommandIntent(text: string): Intent | null {
 /** Messages that must keep their normal meaning even while a name prompt is open. */
 function isRoutingCommand(text: string): boolean {
   const c = canonicalizeForMatch(text);
+  // Interactive reply ids (list rows / buttons) are always commands.
+  if (/^(menu|quiz|provider|quiz_optin):[\w-]+$/i.test(text.trim())) return true;
   if (isGreeting(text) || isFullMenuRequest(text) || isLanguageNeutralSelection(text) || isSupportKeyword(text)) return true;
   if (/^(quiz|start quiz|resume|yes|start|stop|stop reminders|arrival quiz (on|off))$/.test(c)) return true;
   if (extractArrivalDateInput(text) || parseArrivalDate(text)) return true;
@@ -500,6 +502,11 @@ async function handleText(
   }  
   if (await handleQuizText(db, contact, text)) return;
   if (await answerQuiz(db, contact, text)) return;
+  // A tap on an answer from a quiz that has already finished.
+  if (/^quiz:[a-d]$/i.test(text.trim())) {
+    await reply(db, contact, 'That quiz question has already closed. Reply *QUIZ* to start your next session.', { intent: 'quiz', language: lang });
+    return;
+  }
 
   // 2) Greeting / menu: first-run gets 5 goals, MENU gets all 9.
   if (isGreeting(text)) {

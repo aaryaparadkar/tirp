@@ -3,7 +3,7 @@ import { id, now } from '../lib.js';
 import { QUESTION_BANK } from './question-bank.js';
 import type { QuizQuestion } from './types.js';
 import { catalogueConfig } from '../config.js';
-import { sendText } from '../kapso.js';
+import { sendButtons, sendList, sendText } from '../kapso.js';
 import {
   getSessionConfig,
   TOTAL_CURRICULUM_QUESTIONS,
@@ -38,6 +38,52 @@ function questionMessage(question: QuizQuestion, index: number, total: number): 
   return `*Question ${index + 1} of ${total}*\n${question.question}\n\n${options}\n\nReply with A, B, C, or D.`;
 }
 
+/** Interactive-reply ids used by the quiz (list rows and buttons). */
+export const QUIZ_START_ID = 'quiz:start';
+const QUIZ_ANSWER_PREFIX = 'quiz:';
+
+/** Normalize a typed or tapped reply: "quiz:b" → "b", "quiz:start" → "start". */
+function normalizeQuizReply(text: string): string {
+  const value = text.trim().toLowerCase();
+  return value.startsWith(QUIZ_ANSWER_PREFIX) ? value.slice(QUIZ_ANSWER_PREFIX.length) : value;
+}
+
+/**
+ * Send a question like the main menu: the question (with full A–D text) on
+ * top and a "Choose answer" list with one row per option. Falls back to the
+ * plain text question if interactive delivery fails.
+ */
+async function sendQuestion(to: string, question: QuizQuestion, index: number, total: number): Promise<void> {
+  const { formatWhatsAppAnswer } = await import('../response-format.js');
+  const options = question.options.map((option) => `${option.id.toUpperCase()}. ${option.text}`).join('\n');
+  const body = formatWhatsAppAnswer(`*Question ${index + 1} of ${total}*\n${question.question}\n\n${options}`, { maxChars: 1000 });
+  try {
+    await sendList(
+      catalogueConfig.phoneNumberId,
+      to,
+      body,
+      'Choose answer',
+      [{
+        title: `Question ${index + 1} of ${total}`,
+        rows: question.options.map((option) => ({
+          id: `${QUIZ_ANSWER_PREFIX}${option.id}`,
+          title: `${option.id.toUpperCase()}`,
+          description: option.text,
+        })),
+      }],
+      'Tap Choose answer, or reply A, B, C or D',
+    );
+  } catch {
+    await send(to, questionMessage(question, index, total));
+  }
+}
+
+/** XP reward line, shown where it matters (quiz start, finish, stop). */
+export function xpRewardLine(totalXp?: number): string {
+  const progress = typeof totalXp === 'number' ? ` You have ${totalXp}/${TOTAL_CURRICULUM_XP} XP.` : '';
+  return `🎁 Collect all ${TOTAL_CURRICULUM_XP} XP to redeem a *free health checkup*.${progress}`;
+}
+
 type ActiveSessionRow = { id: string; question_ids: string[]; current_index: number };
 
 async function getActiveSession(db: Database, contactId: string): Promise<ActiveSessionRow | null> {
@@ -62,7 +108,7 @@ async function resendCurrentQuestion(db: Database, contact: { id: string; phone:
     .filter((q): q is QuizQuestion => Boolean(q));
   const current = questions[session.current_index];
   if (current) {
-    await send(contact.phone, questionMessage(current, session.current_index, questions.length));
+    await sendQuestion(contact.phone, current, session.current_index, questions.length);
   } else {
     await send(contact.phone, 'You already have a quiz in progress. Reply A, B, C, or D to answer, or YES to repeat the current question.');
   }
@@ -70,13 +116,13 @@ async function resendCurrentQuestion(db: Database, contact: { id: string; phone:
 }
 
 export async function handleQuizText(db: Database, contact: { id: string; phone: string }, text: string): Promise<boolean> {
-  const command = text.trim().toLowerCase();
+  const command = normalizeQuizReply(text);
   const stopKeywords = ['stop', 'stop quiz', 'cancel', 'cancel quiz', 'quit', 'exit', 'stop reminders'];
 
   if (stopKeywords.includes(command)) {
     await db.query("DELETE FROM quiz_sessions WHERE contact_id = $1 AND status = 'active'", [contact.id]);
     await db.query('UPDATE contacts SET quiz_opted_in = false WHERE id = $1', [contact.id]);
-    await send(contact.phone, 'The quiz has been stopped. Your earned XP is safely saved! Reply MENU to browse services, or QUIZ whenever you want to resume.');
+    await send(contact.phone, 'The quiz has been stopped. Your earned XP is safely saved and still counts towards your free health checkup. Reply MENU to browse services, or QUIZ whenever you want to resume.');
     return true;
   }
 
@@ -104,7 +150,7 @@ export async function handleQuizText(db: Database, contact: { id: string; phone:
         .filter((q): q is QuizQuestion => Boolean(q));
       const curIdx = session.rows[0].current_index;
       if (questions[curIdx]) {
-        await send(contact.phone, questionMessage(questions[curIdx], curIdx, questions.length));
+        await sendQuestion(contact.phone, questions[curIdx], curIdx, questions.length);
       }
     } else {
       await send(contact.phone, 'You already have a quiz in progress. Reply A, B, C, or D to answer, or YES to repeat the current question.');
@@ -153,7 +199,7 @@ export async function startQuizForContact(
     );
     await send(
       contact.phone,
-      `You’ve completed all ${TOTAL_CURRICULUM_QUESTIONS} questions and earned ${totalXp}/${TOTAL_CURRICULUM_XP} XP. Congratulations! You are eligible for a free health checkup.`
+      `🏆 You’ve completed all ${TOTAL_CURRICULUM_QUESTIONS} questions and earned ${totalXp}/${TOTAL_CURRICULUM_XP} XP. Congratulations! You can now redeem your *free health checkup*.`
     );
     return { sessionId: null, sessionNumber: null, delivery: 'completed', resumed: false };
   }
@@ -219,10 +265,22 @@ export async function startQuizForContact(
     0
   );
 
-  await send(
-    contact.phone,
-    `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\nProgress: ${masteredCount}/${TOTAL_CURRICULUM_QUESTIONS} questions mastered (${currentTotalXp}/${TOTAL_CURRICULUM_XP} XP).\n\nReply START when you’re ready for the questions.`
-  );
+  const intro =
+    `📚 Learning Session ${sessionConfig.sessionNumber} of ${TOTAL_CURRICULUM_SESSIONS}: ${sessionConfig.title}\n\n${sessionConfig.lesson}\n\n` +
+    `Progress: ${masteredCount}/${TOTAL_CURRICULUM_QUESTIONS} questions mastered (${currentTotalXp}/${TOTAL_CURRICULUM_XP} XP).\n\n` +
+    `${xpRewardLine()}`;
+  try {
+    const { formatWhatsAppAnswer } = await import('../response-format.js');
+    await sendButtons(
+      catalogueConfig.phoneNumberId,
+      contact.phone,
+      formatWhatsAppAnswer(intro, { maxChars: 1000 }),
+      [{ id: QUIZ_START_ID, title: 'Start quiz' }],
+      'Or reply START',
+    );
+  } catch {
+    await send(contact.phone, `${intro}\n\nReply START when you’re ready for the questions.`);
+  }
   return { sessionId, sessionNumber: sessionConfig.sessionNumber, topic: sessionConfig.topic, title: sessionConfig.title, delivery: 'text', resumed: false };
 }
 
@@ -239,12 +297,12 @@ export async function answerQuiz(db: Database, contact: { id: string; phone: str
   const session = current.rows[0];
   const question = QUESTION_BANK.find((item) => item.id === session.question_ids[session.current_index]);
   if (!question) return false;
-  const answer = text.trim().toLowerCase().replace(/[.)]$/, '');
+  const answer = normalizeQuizReply(text).replace(/[.)]$/, '');
   if (/^(hi|hello|hey|menu|catalogue|services?|support)$/i.test(answer)) return false;
 
   const option = question.options.find((item) => item.id === answer || String(question.options.indexOf(item) + 1) === answer);
   if (!option) {
-    await send(contact.phone, 'Please answer with A, B, C, or D (or reply STOP to exit the quiz).');
+    await send(contact.phone, 'Please tap *Choose answer* or reply A, B, C, or D (or reply STOP to exit the quiz).');
     return true;
   }
 
@@ -261,16 +319,17 @@ export async function answerQuiz(db: Database, contact: { id: string; phone: str
       [contact.id, question.id, now()]
     );
     if (firstCorrect) earned += question.xp;
-    feedback = `Correct! ${firstCorrect ? `+${question.xp} XP. ` : 'You already earned XP for this question. '}${question.explanation}`;
+    feedback = `✅ *Correct!* ${firstCorrect ? `+${question.xp} XP.` : 'You already earned XP for this question.'}\n\n${question.explanation}`;
   } else {
-    feedback = `Not quite. (Correct was ${question.correctOptionId.toUpperCase()})\n${question.explanation}`;
+    feedback = `❌ *Not quite.* The answer was *${question.correctOptionId.toUpperCase()}*.\n\n${question.explanation}`;
   }
 
   const nextIndex = session.current_index + 1;
   if (nextIndex < session.question_ids.length) {
     await db.query('UPDATE quiz_sessions SET current_index = $2, earned_xp = $3 WHERE id = $1', [session.id, nextIndex, earned]);
     const nextQ = QUESTION_BANK.find((item) => item.id === session.question_ids[nextIndex])!;
-    await send(contact.phone, `${feedback}\n\n${questionMessage(nextQ, nextIndex, session.question_ids.length)}`);
+    await send(contact.phone, feedback);
+    await sendQuestion(contact.phone, nextQ, nextIndex, session.question_ids.length);
   } else {
     await db.query(
       "UPDATE quiz_sessions SET current_index = $2, earned_xp = $3, status = 'completed', completed_at = $4 WHERE id = $1",
@@ -292,7 +351,7 @@ export async function answerQuiz(db: Database, contact: { id: string; phone: str
     const eligible = mastered >= TOTAL_CURRICULUM_QUESTIONS;
     await send(
       contact.phone,
-      `${feedback}\n\n🎉 Session complete! You earned ${earned} XP this session.\nTotal Progress: ${totalXp}/${TOTAL_CURRICULUM_XP} XP (${mastered}/${TOTAL_CURRICULUM_QUESTIONS} questions mastered).${eligible ? '\n\n🏆 Congratulations! You have mastered all questions and are eligible for a free health checkup.' : '\n\nYou can reply QUIZ at any time to take your next learning session.'}`
+      `${feedback}\n\n🎉 *Session complete!* You earned ${earned} XP this session.\nTotal progress: ${totalXp}/${TOTAL_CURRICULUM_XP} XP (${mastered}/${TOTAL_CURRICULUM_QUESTIONS} questions mastered).${eligible ? '\n\n🏆 Congratulations! You have mastered every question — you can now redeem your *free health checkup*.' : `\n\n🎁 Keep going: collect all ${TOTAL_CURRICULUM_XP} XP to redeem a *free health checkup*. Reply QUIZ any time for your next session.`}`
     );
   }
   return true;
