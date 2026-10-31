@@ -31,7 +31,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. Pharmacy and medicines\n` +
       `5. Visa or waiting periods\n\n` +
       `Reply with a *number (1-5)* or type your question.\n` +
-      `Reply *HELP* for a person, *MENU* for all topics.\n` +
+      `Reply *HELP* for a person, *MENU* to see this menu again.\n` +
       `Emergency? Call *000* now.`,
     fullMenu:
       `*All topics:*\n\n` +
@@ -63,7 +63,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `• *Cover* — what is included?\n` +
       `• *Claim* — how do I claim?\n` +
       `• *Visa* — waiting periods?\n\n` +
-      `*Next step:* reply MENU for all topics.\n\n` +
+      `*Next step:* reply MENU to see the menu.\n\n` +
       `For personal help: https://www.medibankoshc.com.au/contact-us/ or 134 148.`,
     fallbackNoSources:
       `*I couldn't find that in the Medibank OSHC sources I have.*\n\n` +
@@ -97,7 +97,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `It doesn't look like words I understand, so I won't guess.\n\n` +
       `Please type your question in a few words (e.g. "what does my cover include?"), or reply *MENU* to see topics.\n\n` +
       `Emergency? Call *000* now.`,
-    nextStepFallback: `*Next step:* reply MENU for all topics, or type your question in a few words.`,
+    nextStepFallback: `*Next step:* reply MENU to see the menu, or type your question in a few words.`,
   },
   'zh-CN': {
     greeting:
@@ -109,7 +109,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. 药房和处方药\n` +
       `5. 签证或等待期\n\n` +
       `请回复*数字（1-5）*，或直接输入问题。\n` +
-      `回复*帮助*找人工，回复*菜单*查看全部主题。\n` +
+      `回复*帮助*找人工，回复*菜单*再次查看此菜单。\n` +
       `紧急情况请立即拨打 *000*。`,
     fullMenu:
       `*全部主题：*\n\n` +
@@ -139,7 +139,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `• *保障*——包括什么？\n` +
       `• *理赔*——如何理赔？\n` +
       `• *签证*——等待期多久？\n\n` +
-      `*下一步：*回复“菜单”查看全部主题。\n\n` +
+      `*下一步：*回复“菜单”查看菜单。\n\n` +
       `如需人工帮助：https://www.medibankoshc.com.au/contact-us/ 或致电 134 148。`,
     fallbackNoSources:
       `*我在现有的 Medibank OSHC 资料中没有找到相关内容。*\n\n` +
@@ -172,7 +172,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `它看起来不像我能理解的文字，所以我不会猜测。\n\n` +
       `请用几个词输入你的问题（例如“我的保障包括什么？”），或回复*菜单*查看主题。\n\n` +
       `紧急情况请立即拨打 *000*。`,
-    nextStepFallback: `*下一步：*回复“菜单”查看全部主题，或用几个词描述你的问题。`,
+    nextStepFallback: `*下一步：*回复“菜单”查看菜单，或用几个词描述你的问题。`,
   },
   es: {
     greeting:
@@ -184,7 +184,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `4. Farmacia y medicamentos\n` +
       `5. Visa o períodos de espera\n\n` +
       `Responde con un *número (1-5)* o escribe tu pregunta.\n` +
-      `Responde *AYUDA* para una persona, *MENÚ* para todos los temas.\n` +
+      `Responde *AYUDA* para una persona, *MENÚ* para ver este menú otra vez.\n` +
       `¿Emergencia? Llama al *000* ahora.`,
     fullMenu:
       `*Todos los temas:*\n\n` +
@@ -247,7 +247,7 @@ const STRINGS: Record<SupportedLanguage, Record<TranslationKey, string>> = {
       `No parecen palabras que yo entienda, así que no voy a adivinar.\n\n` +
       `Escribe tu pregunta en pocas palabras (por ejemplo: "¿qué incluye mi cobertura?") o responde *MENÚ* para ver los temas.\n\n` +
       `¿Emergencia? Llama al *000* ahora.`,
-    nextStepFallback: `*Siguiente paso:* responde MENÚ para ver todos los temas, o escribe tu pregunta en pocas palabras.`,
+    nextStepFallback: `*Siguiente paso:* responde MENÚ para ver el menú, o escribe tu pregunta en pocas palabras.`,
   },
 };
 

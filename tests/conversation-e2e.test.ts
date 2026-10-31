@@ -235,6 +235,19 @@ describe('self-service onboarding over WhatsApp', () => {
   });
 });
 
+describe('one main menu', () => {
+  it('HELLO and MENU send the identical menu (text + 5 list rows)', async () => {
+    const hello = await say(memoryDb(), 'hello');
+    const menu = await say(memoryDb(), 'MENU');
+    const menu2 = await say(memoryDb(), 'menu');
+    expect(menu).toEqual(hello);
+    expect(menu2).toEqual(hello);
+    expect(hello[0]).toMatch(/1\. Understand my cover[\s\S]*5\. Visa or waiting periods/);
+    expect(hello[0]).not.toMatch(/All topics/);
+    expect(sent[0].kind).toBe('list');
+  });
+});
+
 describe('menu selections give complete topic guides', () => {
   it.each([
     ['menu:coverage', /Understanding your OSHC cover/],

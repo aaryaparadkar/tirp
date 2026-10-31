@@ -32,7 +32,7 @@ import { continueProviderSearch, startProviderSearch, wantsProviderSearch, type 
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
 
 import { catalogueReply, ensureContact, listCategories, listServices, lockPreferredLanguage, sendCatalogueFlow, servicesReply } from './catalogue.js';
-import { getMenuOptions, getQuickMenuOptions, t } from './i18n.js';
+import { getQuickMenuOptions, t } from './i18n.js';
 import { canonicalizeForMatch, normalizeInput, resolveCommandAlias } from './input-normalization.js';
 import { recentTurns, saveTurn } from './conversation.js';
 
@@ -124,10 +124,11 @@ export async function resolveContactLanguage(
 
 }
 
-async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage, full = false): Promise<void> {
+/** The one main menu (HELLO, MENU, START…): greeting text + the 5-goal list. */
+async function sendGreeting(phoneNumberId: string, to: string, lang: SupportedLanguage): Promise<void> {
   const kapso = await import('./kapso.js');
-  const body = full ? t(lang, 'fullMenu') : t(lang, 'greeting');
-  const options = full ? getMenuOptions(lang) : getQuickMenuOptions(lang);
+  const body = t(lang, 'greeting');
+  const options = getQuickMenuOptions(lang);
   const sections = [
     {
       title: 'OSHC',
@@ -502,9 +503,9 @@ async function handleText(
 
   // 2) Greeting / menu: first-run gets 5 goals, MENU gets all 9.
   if (isGreeting(text)) {
-    const full = isFullMenuRequest(text);
-    await sendGreeting(phoneId, contact.phone, lang, full);
-    await saveTurn(db, contact.id, 'outbound', full ? t(lang, 'fullMenu') : t(lang, 'greeting'), { intent: 'greeting', language: lang });
+    // HELLO and MENU send the same menu (the 5-goal list); one menu everywhere.
+    await sendGreeting(phoneId, contact.phone, lang);
+    await saveTurn(db, contact.id, 'outbound', t(lang, 'greeting'), { intent: 'greeting', language: lang });
     return;
   }
   // 3) Direct menu selection (numbers, button ids) and bare topic words
