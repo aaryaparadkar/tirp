@@ -20,6 +20,7 @@ import type { Database } from './db.js';
 import { emergencyCallUrl } from './emergency-page.js';
 import { assessLegibility } from './legibility.js';
 import { topicGuide } from './topic-guides.js';
+import { continueProviderSearch, startProviderSearch, wantsProviderSearch, type ProviderFlowDeps } from './providers/flow.js';
 
 import { EMERGENCY_NUMBER_AU, catalogueConfig } from './config.js';
 
@@ -194,7 +195,9 @@ async function sendEmergency(phoneNumberId: string, to: string, lang: SupportedL
 async function sendAnswer(phoneNumberId: string, to: string, text: string): Promise<void> {
   const kapso = await import('./kapso.js');
   // Centralized outbound contract: prose reflow, safe emphasis, chunked send.
-  await kapso.sendFormattedText(phoneNumberId, to, text);
+  // 1500 = formatter hard cap; callers already size their messages, so the
+  // default 900 would cut provider results / guides mid-list.
+  await kapso.sendFormattedText(phoneNumberId, to, text, { maxChars: 1500 });
 
 }
 
@@ -230,6 +233,19 @@ function isRoutingCommand(text: string): boolean {
   // (Short ones are not checked: "Visal" or "Formosa" contain keywords.)
   if (c.split(' ').length > 3 && deterministicClassify(text)) return true;
   return false;
+}
+
+/** Wiring for the find-a-provider conversation (send, list picker, routing escape hatch). */
+function providerDeps(contact: Contact): ProviderFlowDeps {
+  const phoneId = catalogueConfig.phoneNumberId;
+  return {
+    send: (body) => sendAnswer(phoneId, contact.phone, body),
+    sendTypeList: async (body, buttonText, rows) => {
+      const kapso = await import('./kapso.js');
+      await kapso.sendList(phoneId, contact.phone, body, buttonText, [{ title: 'Provider type', rows }], 'Medibank OSHC providers');
+    },
+    isOtherRequest: (text) => isRoutingCommand(text) || isEmergency(text),
+  };
 }
 
 async function reply(
@@ -314,6 +330,13 @@ async function handleText(
   // 1a) Self-service onboarding (ONBOARD → name → done). Runs before the
   // arrival/quiz handlers so a typed name is never mistaken for an answer.
   if (await handleOnboarding(db, contact, text, lang)) return;
+
+  // 1a2) Find-a-provider conversation in progress (postcode → type → results).
+  const finderReply = await continueProviderSearch(db, contact, text, lang, providerDeps(contact));
+  if (finderReply !== null) {
+    await saveTurn(db, contact.id, 'outbound', finderReply, { intent: 'providers', language: lang });
+    return;
+  }
 
   // 1b) Quiz mode: explicit QUIZ / START QUIZ starts a session, an active
   // session consumes answers and YES / START resumes. Emergency already
@@ -430,6 +453,12 @@ async function handleText(
       await saveTurn(db, contact.id, 'outbound', emergencyReply(lang), { intent: 'emergency', language: lang });
       return;
     }
+    // "Find a doctor or clinic" asks for a postcode and searches Medibank live.
+    if (menuIntent === 'providers') {
+      const sentText = await startProviderSearch(db, contact, lang, providerDeps(contact));
+      await saveTurn(db, contact.id, 'outbound', sentText, { intent: 'providers', language: lang });
+      return;
+    }
     const direct = staticAnswerFor(menuIntent, text, lang) || topicGuide(menuIntent, lang);
     if (direct) {
       await reply(db, contact, direct.text, { intent: menuIntent, sourceIds: direct.sourceIds, sourceUrls: direct.sourceUrls, language: lang });
@@ -448,6 +477,12 @@ async function handleText(
   const legibility = assessLegibility(text);
   if (!legibility.legible) {
     await reply(db, contact, t(lang, 'illegible'), { intent: 'illegible', language: lang });
+    return;
+  }
+  // 4c) Typed provider requests ("GP near 3052", "hospital near me") open the finder.
+  if (wantsProviderSearch(text)) {
+    const sentText = await startProviderSearch(db, contact, lang, providerDeps(contact), text);
+    await saveTurn(db, contact.id, 'outbound', sentText, { intent: 'providers', language: lang });
     return;
   }
   // 5) LLM classification + grounded answer.

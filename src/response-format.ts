@@ -61,7 +61,7 @@ function isStructuralLine(line: string): boolean {
   if (LIST_LINE_RE.test(line)) return true;
   if (/^\*.+\*$/.test(t)) return true; // full-line *bold* heading
   if (/^https?:\/\/\S+$/.test(t)) return true;
-  if (/^[📚🎉🏆💡🔗⭐⚠️❓✅❌ℹ️✨👉]/.test(t)) return true;
+  if (/^(📚|🎉|🏆|💡|🔗|⭐|⚠️|❓|✅|❌|ℹ️|✨|👉|📍|🕒|📞|🗺️|🟢|🔴)/u.test(t)) return true;
   if (/^\*?(next step|下一步|siguiente paso)/i.test(t)) return true;
   if (/^(sources|资料来源|fuentes)\s*[:：]/i.test(t)) return true;
   if (/^question \d+\s+of\s+\d+$/i.test(t)) return true;

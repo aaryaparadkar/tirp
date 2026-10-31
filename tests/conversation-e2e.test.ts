@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/db.js';
 
 // ---- Outbound capture -----------------------------------------------------
@@ -8,7 +9,9 @@ const sent: Array<{ kind: string; body: string; url?: string; label?: string }> 
 vi.mock('../src/kapso.js', () => ({
   sendText: vi.fn(async (_p: string, _to: string, body: string) => { sent.push({ kind: 'text', body }); }),
   sendFormattedText: vi.fn(async (_p: string, _to: string, body: string) => { sent.push({ kind: 'text', body }); }),
-  sendList: vi.fn(async (_p: string, _to: string, body: string) => { sent.push({ kind: 'list', body }); }),
+  sendList: vi.fn(async (_p: string, _to: string, body: string, _btn: string, sections: Array<{ rows: Array<{ id: string; title: string }> }>) => {
+    sent.push({ kind: 'list', body: `${body}\n${sections.flatMap((x) => x.rows.map((r) => `${r.id}|${r.title}`)).join('\n')}` });
+  }),
   sendButtons: vi.fn(async (_p: string, _to: string, body: string) => { sent.push({ kind: 'buttons', body }); }),
   sendEmergencyNumber: vi.fn(async (_p: string, _to: string, body: string, opts: { callUrl?: string; buttonText?: string }) => {
     sent.push({ kind: 'call-button', body, url: opts.callUrl ?? undefined, label: opts.buttonText });
@@ -42,9 +45,11 @@ interface OnboardingRow { student_name: string | null; onboarded_at: Date | null
 function memoryDb() {
   const onboarding = new Map<string, OnboardingRow>();
   const contacts = new Map<string, string>();
+  const finder = new Map<string, { step: string; postcode: string | null; suburb: string | null; provider_type: string | null }>();
   const db = {
     onboarding,
     contacts,
+    finder,
     async query(sql: string, values: unknown[] = []) {
       const s = sql.replace(/\s+/g, ' ');
       if (s.startsWith('INSERT INTO webhook_events')) return { rowCount: 1, rows: [] };
@@ -68,6 +73,23 @@ function memoryDb() {
         const row = onboarding.get(values[0] as string);
         if (row) row.name_requested_at = null;
         return { rowCount: row ? 1 : 0, rows: [] };
+      }
+      if (s.includes('DELETE FROM provider_search_state')) {
+        finder.delete(values[0] as string);
+        return { rowCount: 1, rows: [] };
+      }
+      if (s.includes('FROM provider_search_state')) {
+        const row = finder.get(values[0] as string);
+        return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+      }
+      if (s.includes('INSERT INTO provider_search_state')) {
+        const [id, step, postcode, suburb, provider_type] = values as string[];
+        finder.set(id, { step, postcode, suburb, provider_type });
+        return { rowCount: 1, rows: [] };
+      }
+      if (s.includes('DELETE FROM provider_search_state')) {
+        finder.delete(values[0] as string);
+        return { rowCount: 1, rows: [] };
       }
       if (s.startsWith('UPDATE contacts SET name')) {
         contacts.set(values[0] as string, values[1] as string);
@@ -155,7 +177,6 @@ describe('menu selections give complete topic guides', () => {
   it.each([
     ['menu:coverage', /Understanding your OSHC cover/],
     ['menu:claims', /How to make a claim/],
-    ['menu:providers', /Finding a doctor or clinic/],
     ['menu:pharmacy', /Pharmacy and medicines/],
     ['menu:visa', /Visa rules and waiting periods/],
     ['menu:forms', /Forms and member guides/],
@@ -171,7 +192,7 @@ describe('menu selections give complete topic guides', () => {
 
   it('numbers map to the same guides as the menu list', async () => {
     expect((await say(memoryDb(), '2'))[0]).toMatch(/How to make a claim/);
-    expect((await say(memoryDb(), '3'))[0]).toMatch(/Finding a doctor or clinic/);
+    expect((await say(memoryDb(), '3'))[0]).toMatch(/What's your postcode/);
   });
 
   it('bare topic words (with typos) get the guide too', async () => {
@@ -206,5 +227,89 @@ describe('emergency button', () => {
   it('cover questions about ambulances are not emergencies', async () => {
     await say(memoryDb(), 'Is an ambulance covered?');
     expect(sent.find((m) => m.kind === 'call-button')).toBeUndefined();
+  });
+});
+
+describe('find a doctor or clinic (live Medibank search, mocked)', () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/provider-search-parkville-gp.json', import.meta.url), 'utf8'));
+  const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+  beforeEach(() => {
+    calls.length = 0;
+    // Saturday 31 Oct 2026, 2:30 pm in Melbourne.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-31T03:30:00Z'));
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) });
+      return new Response(JSON.stringify(fixture), { status: 200, headers: { 'content-type': 'application/json' } });
+    }));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('menu 3 → postcode → type → 2 nearest open now + deep link', async () => {
+    const db = memoryDb();
+    expect((await say(db, 'tap', 'menu:providers'))[0]).toMatch(/What's your postcode/);
+
+    const [picker] = await say(db, '3052');
+    expect(picker).toMatch(/near \*Parkville VIC 3052\*/);
+    expect(picker).toMatch(/provider:gp\|1\. GP/);
+    expect(picker).toMatch(/provider:afterhours/);
+
+    const [results] = await say(db, 'GP', 'provider:gp');
+    expect(calls[0].url).toBe('https://www.medibank.com.au/api/provider-search/v1/search/');
+    expect(calls[0].body).toMatchObject({ serviceTypes: ['GENERAL PRACTICE CLINIC'], searchRadius: 10, location: { latitude: -37.78624, longitude: 144.94742 } });
+    // Only Primecare (Sat 1:00–5:30 PM) is open at 2:30 pm Saturday.
+    expect(results).toMatch(/Nearest GPs open now near Parkville VIC 3052/);
+    expect(results).toMatch(/1\. \*Primecare Medical\* — 2\.4 km/);
+    expect(results).toMatch(/Open now · today: 1:00 – 5:30 PM/);
+    expect(results).not.toMatch(/Brunswick Central|Vita Medical/);
+    expect(results).toContain('https://www.medibankoshc.com.au/find-provider/#/List/Parkville_VIC_3052,_Australia/General_Practitioners_%28GP%29');
+    expect(db.finder.size).toBe(0);
+  });
+
+  it('number reply picks the type; shortcut "hospital near 3053" skips questions', async () => {
+    const db = memoryDb();
+    await say(db, '3');
+    expect((await say(db, 'carlton'))[0]).toMatch(/more than one place[\s\S]*Carlton VIC 3053/);
+    await say(db, 'carlton vic');
+    const [res] = await say(db, '2');
+    expect(res).toContain('/Carlton_VIC_3053,_Australia/OSHC_Direct_Billing_Clinic');
+
+    const [direct] = await say(memoryDb(), 'any hospital near 3053?');
+    expect(calls.at(-1)?.body).toMatchObject({ serviceTypes: ['Hospitals'] });
+    expect(direct).toContain('/Carlton_VIC_3053,_Australia/Hospitals');
+  });
+
+  it('when nothing is open, says so and shows the nearest with hours', async () => {
+    vi.setSystemTime(new Date('2026-10-31T12:00:00Z')); // 11 pm Saturday
+    const db = memoryDb();
+    await say(db, '3');
+    await say(db, '3052');
+    const [res] = await say(db, '1');
+    expect(res).toMatch(/No nearby GPs are open right now/);
+    expect(res).toMatch(/Brunswick Central Medical Centre/);
+    expect(res).toMatch(/Closed now · today: 9:00 AM – 12:00 PM/);
+  });
+
+  it('bad postcode, cancel, and API failure all degrade gracefully', async () => {
+    const db = memoryDb();
+    await say(db, '3');
+    expect((await say(db, '9999'))[0]).toMatch(/couldn't find postcode \*9999\*/);
+    expect((await say(db, 'cancel'))[0]).toMatch(/search cancelled/);
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 503 })));
+    const [fail] = await say(memoryDb(), 'gp near 3000');
+    expect(fail).toMatch(/couldn't reach Medibank's provider search/);
+    expect(fail).toContain('/Melbourne_VIC_3000,_Australia/General_Practitioners_%28GP%29');
+  });
+
+  it('a question mid-search leaves the finder and is answered normally', async () => {
+    const db = memoryDb();
+    await say(db, '3');
+    const [ans] = await say(db, 'how do I claim a GP visit?');
+    expect(ans).toMatch(/How to make a claim/);
+    expect(db.finder.size).toBe(0);
   });
 });
