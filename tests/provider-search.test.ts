@@ -89,6 +89,34 @@ describe('result rendering', () => {
   });
 });
 
+describe('open-now within 5 km', () => {
+  const base: ReturnType<typeof normalizeProvider>[] = fixture.providers.map(normalizeProvider);
+  const place = placeForPostcode('3052')!;
+
+  it('Sunday with no listed hours: says none confirmed within 5 km, never "closed"', () => {
+    const sunday = new Date('2026-11-01T00:24:00Z'); // Sun 11:24 am AEDT, like the screenshot
+    const r = renderResults(place, 'gp', base, 'en', sunday);
+    expect(r.text).toMatch(/No GPs confirmed open within 5 km of Parkville VIC 3052 right now/);
+    expect(r.text).toMatch(/check their hours and call ahead/);
+    expect(r.text).toMatch(/Hours not listed — call ahead/);
+    expect(r.text).not.toMatch(/Closed now/);
+  });
+
+  it('open but further than 5 km: says so, then shows the nearest open ones', () => {
+    const far = base.map((p) => (p.name === 'Primecare Medical' ? { ...p, distanceKm: 7.2 } : p));
+    const r = renderResults(place, 'gp', far, 'en', SAT_AFTERNOON);
+    expect(r.text).toMatch(/No GPs confirmed open within 5 km/);
+    expect(r.text).toMatch(/nearest ones open now, a little further away/);
+    expect(r.shown.map((p) => p.name)).toEqual(['Primecare Medical']);
+  });
+
+  it('open within 5 km: normal open-now heading', () => {
+    const r = renderResults(place, 'gp', base, 'en', SAT_AFTERNOON);
+    expect(r.text).toMatch(/Nearest GPs open now near Parkville VIC 3052/);
+    expect(r.text).not.toMatch(/confirmed open within/);
+  });
+});
+
 describe('intent detection', () => {
   it('provider types', () => {
     expect(parseProviderType('provider:hospital')).toBe('hospital');

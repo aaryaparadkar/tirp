@@ -23,12 +23,16 @@ import {
   PROVIDER_TYPES,
   providerType,
   searchNearest,
+  searchProviders,
   type Provider,
   type ProviderTypeKey,
   type SearchOptions,
 } from './search.js';
 
 export const PROVIDER_STATE_TTL_MINUTES = 30;
+
+/** "Nearby" for the open-now check: within this many km of the postcode. */
+export const NEAR_KM = 5;
 
 // ---------------------------------------------------------------------------
 // Parsing
@@ -124,7 +128,9 @@ const COPY = {
     chooseType: 'Choose type',
     searching: '',
     openNowHeading: (n: number, plural: string, where: string) => `*${n === 1 ? 'Nearest' : `${n} nearest`} ${plural} open now near ${where}* 🟢`,
-    noneOpenHeading: (plural: string, where: string) => `*No nearby ${plural} are open right now near ${where}.* 🔴\n\nHere are the closest — check their hours and call ahead:`,
+    noneOpenHeading: (plural: string, where: string, km: number) => `*No ${plural} confirmed open within ${km} km of ${where} right now.* 🔴`,
+    furtherOpen: 'These are the nearest ones open now, a little further away:',
+    closestAnyway: 'Here are the closest — check their hours and call ahead:',
     afterHoursHeading: (plural: string, where: string) => `*${plural[0].toUpperCase()}${plural.slice(1)} covering ${where}*\n\nA doctor comes to you, usually evenings, overnight and weekends. Call to book.`,
     noResults: (plural: string, where: string) => `I couldn't find any ${plural} within 50 km of ${where}.`,
     openNow: 'Open now',
@@ -148,7 +154,9 @@ const COPY = {
     chooseType: '选择类型',
     searching: '',
     openNowHeading: (_n: number, plural: string, where: string) => `*${where} 附近现在营业的${plural}* 🟢`,
-    noneOpenHeading: (plural: string, where: string) => `*${where} 附近的${plural}现在都未营业。* 🔴\n\n以下是最近的几家，请查看营业时间并提前致电：`,
+    noneOpenHeading: (plural: string, where: string, km: number) => `*${where} ${km} 公里内没有确认正在营业的${plural}。* 🔴`,
+    furtherOpen: '以下是稍远一些、现在营业的最近几家：',
+    closestAnyway: '以下是最近的几家，请查看营业时间并提前致电：',
     afterHoursHeading: (plural: string, where: string) => `*覆盖 ${where} 的${plural}*\n\n医生上门服务，通常在晚间、夜间和周末。请致电预约。`,
     noResults: (plural: string, where: string) => `在 ${where} 50 公里范围内没有找到${plural}。`,
     openNow: '现在营业',
@@ -172,7 +180,9 @@ const COPY = {
     chooseType: 'Elegir tipo',
     searching: '',
     openNowHeading: (n: number, plural: string, where: string) => `*${n === 1 ? 'El más cercano' : `Los ${n} más cercanos`}: ${plural} abiertos ahora cerca de ${where}* 🟢`,
-    noneOpenHeading: (plural: string, where: string) => `*No hay ${plural} abiertos ahora cerca de ${where}.* 🔴\n\nEstos son los más cercanos — revisa su horario y llama antes:`,
+    noneOpenHeading: (plural: string, where: string, km: number) => `*No hay ${plural} confirmados abiertos a menos de ${km} km de ${where} ahora.* 🔴`,
+    furtherOpen: 'Estos son los más cercanos abiertos ahora, un poco más lejos:',
+    closestAnyway: 'Estos son los más cercanos — revisa su horario y llama antes:',
     afterHoursHeading: (plural: string, where: string) => `*${plural[0].toUpperCase()}${plural.slice(1)} que cubren ${where}*\n\nUn médico va a tu casa, normalmente por la noche y fines de semana. Llama para reservar.`,
     noResults: (plural: string, where: string) => `No encontré ${plural} a menos de 50 km de ${where}.`,
     openNow: 'Abierto ahora',
@@ -247,6 +257,7 @@ export function renderResults(
 
   const withStatus = providers.map((p) => ({ p, open: isOpenNow(p, now) }));
   const open = withStatus.filter((x) => x.open === true);
+  const openNear = open.filter((x) => x.p.distanceKm <= NEAR_KM);
 
   let heading: string;
   let picked: typeof withStatus;
@@ -254,12 +265,18 @@ export function renderResults(
     // Home-visit services rarely publish hours; they exist for after-hours anyway.
     heading = c.afterHoursHeading(plural, at);
     picked = withStatus.slice(0, 2);
-  } else if (open.length) {
-    picked = open.slice(0, 2);
+  } else if (openNear.length) {
+    picked = openNear.slice(0, 2);
     heading = c.openNowHeading(picked.length, plural, at);
+  } else if (open.length) {
+    // Nothing confirmed open within 5 km, but some are open further out.
+    picked = open.slice(0, 2);
+    heading = `${c.noneOpenHeading(plural, at, NEAR_KM)}\n\n${c.furtherOpen}`;
   } else {
-    heading = c.noneOpenHeading(plural, at);
+    // Nothing confirmed open at all (closed, or today's hours not listed —
+    // never claimed closed): show the closest with their hours.
     picked = withStatus.slice(0, 2);
+    heading = `${c.noneOpenHeading(plural, at, NEAR_KM)}\n\n${c.closestAnyway}`;
   }
 
   const body = picked.map((x, i) => renderProvider(i + 1, x.p, x.open, lang, now)).join('\n\n');
@@ -277,7 +294,7 @@ export interface ProviderFlowDeps {
   sendTypeList?: (body: string, buttonText: string, rows: Array<{ id: string; title: string; description: string }>) => Promise<void>;
   /** Returns true for greetings, menu, questions etc. that should leave the finder. */
   isOtherRequest: (text: string) => boolean;
-  search?: (place: Place, type: ProviderTypeKey) => Promise<Provider[]>;
+  search?: (place: Place, type: ProviderTypeKey, radiusKm?: number) => Promise<Provider[]>;
   searchOptions?: SearchOptions;
   now?: () => Date;
 }
@@ -287,12 +304,14 @@ export interface ProviderFlowDeps {
 const cache = new Map<string, { at: number; providers: Provider[] }>();
 const CACHE_MS = 10 * 60_000;
 
-async function cachedSearch(place: Place, type: ProviderTypeKey, deps: ProviderFlowDeps): Promise<Provider[]> {
-  if (deps.search) return deps.search(place, type);
-  const key = `${place.postcode}:${place.suburb}:${providerType(type).serviceType}`;
+async function cachedSearch(place: Place, type: ProviderTypeKey, deps: ProviderFlowDeps, radiusKm?: number): Promise<Provider[]> {
+  if (deps.search) return deps.search(place, type, radiusKm);
+  const key = `${place.postcode}:${place.suburb}:${providerType(type).serviceType}:${radiusKm ?? 'auto'}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.providers;
-  const { providers } = await searchNearest(place, type, deps.searchOptions);
+  const providers = radiusKm
+    ? await searchProviders(place, type, { ...deps.searchOptions, radiusKm })
+    : (await searchNearest(place, type, deps.searchOptions)).providers;
   cache.set(key, { at: Date.now(), providers });
   if (cache.size > 500) cache.delete(cache.keys().next().value as string);
   return providers;
@@ -322,8 +341,15 @@ async function runSearch(db: Database, contact: Contact, place: Place, type: Pro
   const c = providerCopy(lang);
   let text: string;
   try {
-    const providers = await cachedSearch(place, type, deps);
-    text = renderResults(place, type, providers, lang, deps.now ? deps.now() : new Date()).text;
+    const now = deps.now ? deps.now() : new Date();
+    let providers = await cachedSearch(place, type, deps);
+    // Nothing open in the first ring? Look a bit wider for open ones (25 km).
+    if (type !== 'afterhours' && providers.length && !providers.some((p) => isOpenNow(p, now) === true)) {
+      const wider = await cachedSearch(place, type, deps, 25).catch(() => [] as Provider[]);
+      const seen = new Set(providers.map((p) => p.id));
+      providers = [...providers, ...wider.filter((p) => !seen.has(p.id))].sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+    text = renderResults(place, type, providers, lang, now).text;
   } catch (error) {
     console.error('[providers] search failed', error);
     text = formatWhatsAppAnswer(c.failed(findProviderUrl(place, type)));

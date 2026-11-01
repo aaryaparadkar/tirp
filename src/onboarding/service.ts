@@ -1,6 +1,7 @@
 import type { Database } from '../db.js';
 import { catalogueConfig } from '../config.js';
 import { sendText } from '../kapso.js';
+import { welcomeMessage } from './welcome.js';
 
 const MONTHS: Record<string, number> = {
   jan: 1,
@@ -29,11 +30,8 @@ const MONTHS: Record<string, number> = {
   december: 12,
 };
 
-const ARRIVAL_REMINDER =
-  '👋 OSHC Compass here! Your arrival learning check-in is ready. ' +
-  'Reply QUIZ to begin your short healthcare knowledge quiz. ' +
-  'Reply ARRIVAL QUIZ OFF to stop these invitations. ' +
-  'For policy and coverage details, follow official Medibank sources.';
+// Same "Welcome to Australia" check-in the onboarding flow sends.
+const ARRIVAL_REMINDER = welcomeMessage(null, 'en', true);
 
 const scheduledArrivalReminders = new Map<string, NodeJS.Timeout>();
 
@@ -59,7 +57,16 @@ function futureYear(month: number, day: number, reference: Date): number {
  * day-first interpretation (the Australian default); unambiguous month/day
  * values are still accepted. The returned value is always YYYY-MM-DD.
  */
+/** The calendar date in Australia/Sydney (also Melbourne) as a UTC-midnight Date. */
+function localToday(reference: Date): Date {
+  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(reference);
+  return new Date(`${iso}T00:00:00Z`);
+}
+
 export function parseArrivalDate(input: string, reference = new Date()): string | null {
+  // Relative words ("today", "2 days ago") mean the student's local date,
+  // not UTC — before 11 am in Melbourne those differ by a day.
+  const today = localToday(reference);
   const value = input
     .trim()
     .toLowerCase()
@@ -69,15 +76,23 @@ export function parseArrivalDate(input: string, reference = new Date()): string 
     .trim();
   if (!value) return null;
 
-  if (/^today$/.test(value)) return reference.toISOString().slice(0, 10);
+  if (/^today$/.test(value)) return today.toISOString().slice(0, 10);
   if (/^tomorrow$/.test(value)) {
-    const tomorrow = new Date(reference.getTime() + 86_400_000);
+    const tomorrow = new Date(today.getTime() + 86_400_000);
     return tomorrow.toISOString().slice(0, 10);
+  }
+  if (/^yesterday$/.test(value)) {
+    return new Date(today.getTime() - 86_400_000).toISOString().slice(0, 10);
+  }
+  const ago = /^(\d+)\s+(day|days|week|weeks)\s+ago$/.exec(value);
+  if (ago) {
+    const days = Number(ago[1]) * (/week/.test(ago[2]) ? 7 : 1);
+    return new Date(today.getTime() - days * 86_400_000).toISOString().slice(0, 10);
   }
   const relative = /^(?:in\s+)?(\d+)\s+(day|days|week|weeks|month|months)$/.exec(value);
   if (relative) {
     const amount = Number(relative[1]);
-    const date = new Date(reference);
+    const date = new Date(today);
     if (/week/.test(relative[2])) date.setUTCDate(date.getUTCDate() + amount * 7);
     else if (/month/.test(relative[2])) date.setUTCMonth(date.getUTCMonth() + amount);
     else date.setUTCDate(date.getUTCDate() + amount);
@@ -92,7 +107,7 @@ export function parseArrivalDate(input: string, reference = new Date()): string 
       sat: 6, saturday: 6,
     };
     const target = weekdays[weekday[1]];
-    const date = new Date(reference);
+    const date = new Date(today);
     let delta = (target - date.getUTCDay() + 7) % 7;
     if (delta === 0 || value.startsWith('next ')) delta ||= 7;
     date.setUTCDate(date.getUTCDate() + delta);

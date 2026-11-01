@@ -6,7 +6,13 @@ import {
   saveArrivalDate,
   withdrawArrivalQuizConsent,
 } from './onboarding/service.js';
+import { sendWelcomeIfDue } from './onboarding/welcome.js';
 import {
+  arrivalDateLabel,
+  clearArrivalRequest,
+  hasPendingArrivalRequest,
+  isSkipCommand,
+  markArrivalRequested,
   QUIZ_OPTIN_NO,
   QUIZ_OPTIN_YES,
   answerQuizPrompt,
@@ -268,6 +274,28 @@ async function reply(
   await saveTurn(db, contact.id, 'outbound', body, meta);
 }
 
+/**
+ * After the quiz question is answered: if the arrival check-in is due today
+ * (landed 2+ days ago), send the "Welcome to Australia" message a few seconds
+ * later so it arrives as its own moment. Delay via ONBOARDING_WELCOME_DELAY_MS
+ * (default 4000; 0 = send immediately).
+ */
+async function queueWelcome(db: Database, contact: Contact, lang: SupportedLanguage): Promise<void> {
+  const send = async (): Promise<void> => {
+    const text = await sendWelcomeIfDue(db, contact, lang);
+    if (text) await saveTurn(db, contact.id, 'outbound', text, { intent: 'onboarding_welcome', language: lang });
+  };
+  const delay = Number(process.env.ONBOARDING_WELCOME_DELAY_MS ?? 4000);
+  if (!Number.isFinite(delay) || delay <= 0) {
+    await send().catch((error) => console.error('[onboarding] welcome failed', error));
+    return;
+  }
+  const timer = setTimeout(() => {
+    void send().catch((error) => console.error('[onboarding] welcome failed', error));
+  }, delay);
+  timer.unref?.();
+}
+
 /** Ask "opt into the quiz?" with two buttons; plain text if buttons fail. */
 async function askQuizOptIn(db: Database, contact: Contact, lang: SupportedLanguage): Promise<void> {
   const copy = onboardingCopy(lang);
@@ -293,6 +321,7 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
   if (isOnboardCommand(text)) {
     try {
       await clearQuizPrompt(db, contact.id);
+      await clearArrivalRequest(db, contact.id);
       const state = await startSelfOnboarding(db, contact.id);
       const body = state.onboarded && state.studentName ? copy.askNameAgain(state.studentName) : copy.askName;
       await reply(db, contact, body, { intent: 'onboarding_name_request', language: lang });
@@ -311,6 +340,7 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
       try {
         await answerQuizPrompt(db, contact.id, answer);
         await reply(db, contact, answer ? copy.quizYes : copy.quizNo, { intent: 'onboarding_quiz_optin', language: lang });
+        await queueWelcome(db, contact, lang);
       } catch (error) {
         console.error('[onboarding] quiz opt-in failed', error);
         await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });
@@ -320,6 +350,33 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
     // Anything else: the student moved on — close the question, route normally.
     await clearQuizPrompt(db, contact.id);
     return false;
+  }
+
+  // Answer to "when do you arrive?" (asked right after the name).
+  if (await hasPendingArrivalRequest(db, contact.id)) {
+    if (isSkipCommand(text) || isCancelCommand(text)) {
+      await clearArrivalRequest(db, contact.id);
+      await askQuizOptIn(db, contact, lang);
+      return true;
+    }
+    const iso = parseArrivalDate(extractArrivalDateInput(text) || text);
+    if (iso) {
+      await clearArrivalRequest(db, contact.id);
+      try {
+        await saveArrivalDate(db, contact.id, iso);
+        await reply(db, contact, copy.arrivalSaved(arrivalDateLabel(iso)), { intent: 'onboarding_arrival', language: lang });
+      } catch (error) {
+        console.error('[onboarding] arrival date failed', error);
+      }
+      await askQuizOptIn(db, contact, lang);
+      return true;
+    }
+    if (isRoutingCommand(text)) {
+      await clearArrivalRequest(db, contact.id);
+      return false;
+    }
+    await reply(db, contact, copy.invalidArrival, { intent: 'onboarding_arrival_invalid', language: lang });
+    return true;
   }
 
   if (!(await hasPendingNameRequest(db, contact.id))) return false;
@@ -343,7 +400,8 @@ async function handleOnboarding(db: Database, contact: Contact, text: string, la
     await completeSelfOnboarding(db, contact.id, name);
     contact.name = name;
     await reply(db, contact, copy.done(name), { intent: 'onboarding_complete', language: lang });
-    await askQuizOptIn(db, contact, lang);
+    await markArrivalRequested(db, contact.id);
+    await reply(db, contact, copy.askArrival, { intent: 'onboarding_arrival_request', language: lang });
   } catch (error) {
     console.error('[onboarding] completion failed', error);
     await reply(db, contact, copy.failed, { intent: 'onboarding_error', language: lang });

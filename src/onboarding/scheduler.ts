@@ -2,6 +2,7 @@ import type { Database } from '../db.js';
 import { catalogueConfig } from '../config.js';
 import { sendText } from '../kapso.js';
 import { listDueArrivalQuizzes } from './service.js';
+import { welcomeMessage } from './welcome.js';
 
 /** Read-only mode. Never sends or alters onboarding records. */
 export async function runOnboardingDryRun(db: Database): Promise<number> {
@@ -79,11 +80,7 @@ export async function runOnboardingDemoSend(db: Database): Promise<number> {
     return 0;
   }
 
-  const reminder =
-    '👋 OSHC Compass here! Your arrival learning check-in is ready. ' +
-    'Reply QUIZ to begin your short healthcare knowledge quiz. ' +
-    'Reply ARRIVAL QUIZ OFF to stop these invitations. ' +
-    'For policy and coverage details, follow official Medibank sources.';
+  const reminder = welcomeMessage(null, 'en', true);
 
   try {
     await sendText(phoneNumberId, student.phone, reminder);

@@ -140,6 +140,9 @@ export async function completeSelfOnboarding(db: Database, contactId: string, na
 }
 
 type OnboardingCopy = {
+  askArrival: string;
+  arrivalSaved: (dateLabel: string) => string;
+  invalidArrival: string;
   quizAsk: string;
   quizYesButton: string;
   quizNoButton: string;
@@ -155,6 +158,12 @@ type OnboardingCopy = {
 
 const COPY: Record<SupportedLanguage, OnboardingCopy> = {
   en: {
+    askArrival:
+      `*When do you arrive in Australia?* ✈️\n\n` +
+      `Send your arrival date (for example *30/10/2026*, *30 Oct* or *tomorrow*). Already here? Send the day you landed.\n\n` +
+      `Reply *SKIP* if you're not sure yet.`,
+    arrivalSaved: (dateLabel) => `Got it — arrival date saved as *${dateLabel}*. 🛬`,
+    invalidArrival: `I couldn't read that date. Try *30/10/2026*, *30 Oct* or *2 days ago*, or reply *SKIP*.`,
     quizAsk:
       `*One last thing — want to join the OSHC quiz?* 🧠\n\n` +
       `Short, friendly questions that teach you how to use your cover in Australia (GPs, claims, pharmacies, emergencies). Earn XP as you go — collect all 320 XP to redeem a *free health checkup*.`,
@@ -175,6 +184,9 @@ const COPY: Record<SupportedLanguage, OnboardingCopy> = {
     failed: `Sorry, I couldn't finish onboarding right now. Please reply ONBOARD to try again in a minute.`,
   },
   'zh-CN': {
+    askArrival: `*你哪天抵达澳大利亚？* ✈️\n\n请发送抵达日期（例如 *30/10/2026*、*30 Oct* 或 *tomorrow*）。已经到了？发送你落地的日期。\n\n不确定的话回复 *SKIP*。`,
+    arrivalSaved: (dateLabel) => `好的，抵达日期已保存为 *${dateLabel}*。🛬`,
+    invalidArrival: `我看不懂这个日期。试试 *30/10/2026*、*30 Oct* 或 *2 days ago*，或回复 *SKIP*。`,
     quizAsk: `*最后一步：想参加 OSHC 小测验吗？* 🧠\n\n简短有趣的问题，教你在澳大利亚如何使用保险（看医生、理赔、药房、紧急情况），赚取 XP，集满 320 XP 即可兑换*免费健康检查*。`,
     quizYesButton: '好的，加入',
     quizNoButton: '以后再说',
@@ -190,6 +202,9 @@ const COPY: Record<SupportedLanguage, OnboardingCopy> = {
     failed: `抱歉，暂时无法完成注册。请稍后回复 ONBOARD 重试。`,
   },
   es: {
+    askArrival: `*¿Cuándo llegas a Australia?* ✈️\n\nEnvía tu fecha de llegada (por ejemplo *30/10/2026*, *30 Oct* o *tomorrow*). ¿Ya estás aquí? Envía el día en que llegaste.\n\nResponde *SKIP* si aún no lo sabes.`,
+    arrivalSaved: (dateLabel) => `Listo — fecha de llegada guardada: *${dateLabel}*. 🛬`,
+    invalidArrival: `No pude leer esa fecha. Prueba *30/10/2026*, *30 Oct* o *2 days ago*, o responde *SKIP*.`,
     quizAsk: `*Una última cosa: ¿quieres unirte al quiz de OSHC?* 🧠\n\nPreguntas cortas que te enseñan a usar tu cobertura en Australia (médicos, reclamos, farmacias, emergencias). Gana XP: reúne 320 XP y canjéalos por un *chequeo de salud gratis*.`,
     quizYesButton: 'Sí, inscríbeme',
     quizNoButton: 'Ahora no',
@@ -277,6 +292,47 @@ export async function answerQuizPrompt(db: Database, contactId: string, optIn: b
 export async function clearQuizPrompt(db: Database, contactId: string): Promise<void> {
   await db.query(
     `UPDATE onboarding_state SET quiz_prompted_at = NULL, updated_at = now() WHERE contact_id = $1`,
+    [contactId],
+  ).catch(() => undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Arrival date question asked right after the name
+// ---------------------------------------------------------------------------
+
+export function isSkipCommand(text: string): boolean {
+  return /^(skip|not sure|dont know|don't know|later|saltar|跳过)$/i.test(normalizeInput(text).toLowerCase().replace(/[.!]+$/, ''));
+}
+
+/** "2026-10-30" → "30 Oct 2026". */
+export function arrivalDateLabel(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+export async function markArrivalRequested(db: Database, contactId: string): Promise<void> {
+  await db.query(
+    `UPDATE onboarding_state SET arrival_requested_at = now(), updated_at = now() WHERE contact_id = $1`,
+    [contactId],
+  ).catch(() => undefined);
+}
+
+export async function hasPendingArrivalRequest(db: Database, contactId: string): Promise<boolean> {
+  try {
+    const result = await db.query<{ pending: boolean }>(
+      `SELECT (arrival_requested_at > now() - ($2 || ' minutes')::interval) AS pending
+         FROM onboarding_state
+        WHERE contact_id = $1 AND arrival_requested_at IS NOT NULL`,
+      [contactId, String(NAME_REQUEST_TTL_MINUTES)],
+    );
+    return result.rows[0]?.pending === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearArrivalRequest(db: Database, contactId: string): Promise<void> {
+  await db.query(
+    `UPDATE onboarding_state SET arrival_requested_at = NULL, updated_at = now() WHERE contact_id = $1`,
     [contactId],
   ).catch(() => undefined);
 }

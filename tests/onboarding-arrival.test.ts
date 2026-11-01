@@ -16,8 +16,18 @@ describe('arrival date parsing', () => {
     ['tomorrow', '2026-10-19'],
     ['in 2 weeks', '2026-11-01'],
     ['next Friday', '2026-10-23'],
+    ['yesterday', '2026-10-17'],
+    ['2 days ago', '2026-10-16'],
+    ['1 week ago', '2026-10-11'],
   ])('accepts %s', (input, expected) => {
     expect(parseArrivalDate(input, REFERENCE)).toBe(expected);
+  });
+
+  it('uses the Melbourne calendar date, not UTC, for relative words', () => {
+    // 8:00 am Sunday 1 Nov in Melbourne is still Saturday 31 Oct in UTC.
+    const morning = new Date('2026-10-31T21:00:00Z');
+    expect(parseArrivalDate('today', morning)).toBe('2026-11-01');
+    expect(parseArrivalDate('2 days ago', morning)).toBe('2026-10-30');
   });
 
   it('rejects impossible dates instead of silently rolling them over', () => {

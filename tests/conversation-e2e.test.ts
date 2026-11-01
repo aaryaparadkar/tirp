@@ -43,7 +43,7 @@ const { handleWebhook } = await import('../src/webhook.js');
 const { FlowRegistry } = await import('../src/flows.js');
 
 // ---- Minimal in-memory DB for the onboarding queries ----------------------
-interface OnboardingRow { student_name: string | null; onboarded_at: Date | null; name_requested_at: Date | null; quiz_prompted_at?: Date | null; quiz_opt_in?: boolean | null }
+interface OnboardingRow { student_name: string | null; onboarded_at: Date | null; name_requested_at: Date | null; quiz_prompted_at?: Date | null; quiz_opt_in?: boolean | null; arrival_requested_at?: Date | null; travel_date?: string | null; due_date?: string | null; invite_claimed?: boolean; invite_sent?: boolean }
 function memoryDb() {
   const onboarding = new Map<string, OnboardingRow>();
   const contacts = new Map<string, string>();
@@ -71,6 +71,36 @@ function memoryDb() {
         const row = onboarding.get(values[0] as string)!;
         row.name_requested_at = new Date();
         return { rowCount: 1, rows: [{ student_name: row.student_name, onboarded_at: row.onboarded_at }] };
+      }
+      if (s.includes('arrival_requested_at > now()')) {
+        const row = onboarding.get(values[0] as string);
+        if (!row?.arrival_requested_at) return { rowCount: 0, rows: [] };
+        return { rowCount: 1, rows: [{ pending: true }] };
+      }
+      if (s.includes('SET arrival_requested_at = now()') || s.includes('SET arrival_requested_at = NULL')) {
+        const row = onboarding.get(values[0] as string);
+        if (row) row.arrival_requested_at = s.includes('arrival_requested_at = now()') ? new Date() : null;
+        return { rowCount: row ? 1 : 0, rows: [] };
+      }
+      if (s.includes('SET travel_date = $2::date')) {
+        const row = onboarding.get(values[0] as string)!;
+        row.travel_date = values[1] as string;
+        const due = new Date(`${row.travel_date}T00:00:00Z`);
+        due.setUTCDate(due.getUTCDate() + 2);
+        row.due_date = due.toISOString().slice(0, 10);
+        return { rowCount: 1, rows: [{ quiz_due_at: new Date(`${row.due_date}T00:00:00+11:00`) }] };
+      }
+      if (s.includes('SET quiz_invite_claimed_at = now()') && s.includes("AT TIME ZONE 'Australia/Sydney'")) {
+        const row = onboarding.get(values[0] as string);
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+        if (!row?.due_date || row.due_date > today || row.invite_claimed) return { rowCount: 0, rows: [] };
+        row.invite_claimed = true;
+        return { rowCount: 1, rows: [{ opted_in: row.quiz_opt_in === true, student_name: row.student_name }] };
+      }
+      if (s.includes('SET quiz_invite_sent_at = now()')) {
+        const row = onboarding.get(values[0] as string);
+        if (row) row.invite_sent = true;
+        return { rowCount: 1, rows: [] };
       }
       if (s.includes('quiz_prompted_at > now()')) {
         const row = onboarding.get(values[0] as string);
@@ -162,6 +192,7 @@ const savedEnv = { ...process.env };
 beforeEach(() => {
   process.env.KAPSO_WEBHOOK_SECRET = SECRET;
   process.env.PUBLIC_BASE_URL = 'https://oshc.example.com';
+  process.env.ONBOARDING_WELCOME_DELAY_MS = '0';
   delete process.env.MISTRAL_API_KEYS;
   delete process.env.MISTRAL_API_KEY;
   delete process.env.KAPSO_PHONE_NUMBER_ID;
@@ -182,35 +213,68 @@ describe('self-service onboarding over WhatsApp', () => {
     expect(db.onboarding.get('contact-1')?.name_requested_at).toBeNull();
   });
 
-  it('after onboarding asks to opt into the quiz (buttons) and records the answer', async () => {
+  it('name → arrival date → quiz opt-in → Welcome to Australia (landed 2 days ago)', async () => {
     const db = memoryDb();
     await say(db, 'onboard');
-    const [done, ask] = await say(db, 'Priya');
+    const [done, askArrival] = await say(db, 'Priya');
     expect(done).toMatch(/You're onboarded, Priya/);
-    expect(ask).toMatch(/want to join the OSHC quiz/);
-    expect(ask).toMatch(/quiz_optin:yes\|Yes, opt me in/);
-    expect(ask).toMatch(/quiz_optin:no\|Not now/);
+    expect(askArrival).toMatch(/When do you arrive in Australia/);
 
-    const [yes] = await say(db, 'Yes, opt me in', 'quiz_optin:yes');
+    const [saved, askQuiz] = await say(db, '2 days ago');
+    expect(saved).toMatch(/arrival date saved as \*/);
+    expect(askQuiz).toMatch(/want to join the OSHC quiz/);
+    expect(askQuiz).toMatch(/quiz_optin:yes\|Yes, opt me in/);
+    expect(askQuiz).toMatch(/quiz_optin:no\|Not now/);
+
+    const [yes, welcome] = await say(db, 'Yes, opt me in', 'quiz_optin:yes');
     expect(yes).toMatch(/You're in!/);
     expect(db.quizOptIn.get('contact-1')).toBe(true);
-    expect(db.onboarding.get('contact-1')?.quiz_opt_in).toBe(true);
-    expect(db.onboarding.get('contact-1')?.quiz_prompted_at).toBeNull();
+    expect(welcome).toMatch(/G'day Priya, welcome to Australia!/);
+    expect(welcome).toMatch(/you're not on your own/);
+    expect(welcome).toMatch(/free health checkup/);
+    expect(welcome).toMatch(/QUIZ\|Start my quiz/);
+    expect(db.onboarding.get('contact-1')?.invite_sent).toBe(true);
   });
 
-  it('typed "no" declines; anything else just moves on', async () => {
+  it('declined quiz → welcome reminds them they can opt in; welcome is sent once', async () => {
     const db = memoryDb();
     await say(db, 'onboard');
     await say(db, 'Mei Lin');
-    expect((await say(db, 'no'))[0]).toMatch(/No problem\. Reply \*QUIZ\*/);
+    await say(db, '2 days ago');
+    const [no, welcome] = await say(db, 'no');
+    expect(no).toMatch(/No problem\. Reply \*QUIZ\*/);
     expect(db.quizOptIn.get('contact-1')).toBe(false);
+    expect(welcome).toMatch(/Tap below to opt in/);
+    expect(welcome).toMatch(/quiz_optin:yes\|Yes, opt me in/);
+
+    // Tapping the welcome's opt-in button opts them in; no second welcome.
+    const replies = await say(db, 'Yes, opt me in', 'quiz_optin:yes');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toMatch(/You're in!/);
+  });
+
+  it('future arrival: no welcome yet; SKIP also works', async () => {
+    const db = memoryDb();
+    await say(db, 'onboard');
+    await say(db, 'Mei Lin');
+    await say(db, 'in 10 days');
+    expect(await say(db, 'yes')).toHaveLength(1);
 
     const db2 = memoryDb();
     await say(db2, 'onboard');
     await say(db2, 'Mei Lin');
-    const [menu] = await say(db2, 'hello');
+    const [askQuiz] = await say(db2, 'skip');
+    expect(askQuiz).toMatch(/want to join the OSHC quiz/);
+  });
+
+  it('bad date re-asks; a question moves on', async () => {
+    const db = memoryDb();
+    await say(db, 'onboard');
+    await say(db, 'Mei Lin');
+    expect((await say(db, 'banana'))[0]).toMatch(/couldn't read that date/);
+    const [menu] = await say(db, 'hello');
     expect(menu).toMatch(/Medibank OSHC assistant/);
-    expect(db2.onboarding.get('contact-1')?.quiz_prompted_at).toBeNull();
+    expect(db.onboarding.get('contact-1')?.arrival_requested_at).toBeNull();
   });
 
   it('re-prompts on a non-name and lets questions through', async () => {
@@ -366,7 +430,8 @@ describe('find a doctor or clinic (live Medibank search, mocked)', () => {
     await say(db, '3');
     await say(db, '3052');
     const [res] = await say(db, '1');
-    expect(res).toMatch(/No nearby GPs are open right now/);
+    expect(res).toMatch(/No GPs confirmed open within 5 km of Parkville VIC 3052 right now/);
+    expect(res).toMatch(/check their hours and call ahead/);
     expect(res).toMatch(/Brunswick Central Medical Centre/);
     expect(res).toMatch(/Closed now · today: 9:00 AM – 12:00 PM/);
   });
