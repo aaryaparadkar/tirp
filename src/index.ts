@@ -15,6 +15,7 @@ import { FlowRegistry } from './flows.js';
 import { json } from './lib.js';
 import { handleWebhook } from './webhook.js';
 import { EMERGENCY_CALL_PATH, emergencyCallPage } from './emergency-page.js';
+import { SUPPORT_CALL_PATH, supportCallPage } from './support-call-page.js';
 import { OshcServiceFlow } from './oshc-flow.js';
 import { OshcQuizFlow } from './quiz/flow.js';
 import { sendWeeklyQuizReminders } from './quiz/service.js';
@@ -65,6 +66,10 @@ export async function handleRequest(request: Request, runtime: Runtime): Promise
   // Public "Call 000" bridge page behind the WhatsApp emergency button.
   if (url.pathname === EMERGENCY_CALL_PATH && (request.method === 'GET' || request.method === 'HEAD')) {
     return withSecurityHeaders(emergencyCallPage(request));
+  }
+  // "Call 1800 887 283" / "Call 134 148" bridge pages (allow-listed numbers only).
+  if (SUPPORT_CALL_PATH.test(url.pathname) && (request.method === 'GET' || request.method === 'HEAD')) {
+    return withSecurityHeaders(supportCallPage(request));
   }
   if (url.pathname === '/webhooks/kapso' && request.method === 'POST') {
     return withSecurityHeaders(await handleWebhook(request, runtime.db, runtime.flows));

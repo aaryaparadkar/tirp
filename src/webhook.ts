@@ -7,6 +7,8 @@ import {
   withdrawArrivalQuizConsent,
 } from './onboarding/service.js';
 import { sendWelcomeIfDue } from './onboarding/welcome.js';
+import { callButtonLabel, matchSupportService, SUPPORT_SOURCE_URL, supportServiceMessage, type SupportServiceKey } from './support-services.js';
+import { STUDENT_HEALTH_LINE, supportCallUrl } from './support-call-page.js';
 import {
   arrivalDateLabel,
   clearArrivalRequest,
@@ -294,6 +296,30 @@ async function queueWelcome(db: Database, contact: Contact, lang: SupportedLangu
     void send().catch((error) => console.error('[onboarding] welcome failed', error));
   }, delay);
   timer.unref?.();
+}
+
+/** Support-service reply with a Call 1800 887 283 button (dialer only). */
+async function sendSupportService(db: Database, contact: Contact, service: SupportServiceKey, lang: SupportedLanguage): Promise<void> {
+  const { formatWhatsAppAnswer } = await import('./response-format.js');
+  const kapso = await import('./kapso.js');
+  const body = formatWhatsAppAnswer(supportServiceMessage(service, lang), { maxChars: 1000 });
+  const url = supportCallUrl(STUDENT_HEALTH_LINE, lang);
+  let sent = false;
+  if (url) {
+    try {
+      await kapso.sendCallCta(catalogueConfig.phoneNumberId, contact.phone, body, callButtonLabel(lang), url);
+      sent = true;
+    } catch (error) {
+      console.error('[support] call button failed, sending text', error);
+    }
+  }
+  if (!sent) await sendAnswer(catalogueConfig.phoneNumberId, contact.phone, body);
+  await saveTurn(db, contact.id, 'outbound', body, {
+    intent: 'support',
+    sourceIds: ['health-support'],
+    sourceUrls: [SUPPORT_SOURCE_URL],
+    language: lang,
+  });
 }
 
 /** Ask "opt into the quiz?" with two buttons; plain text if buttons fail. */
@@ -612,6 +638,13 @@ async function handleText(
   if (wantsProviderSearch(text)) {
     const sentText = await startProviderSearch(db, contact, lang, providerDeps(contact), text);
     await saveTurn(db, contact.id, 'outbound', sentText, { intent: 'providers', language: lang });
+    return;
+  }
+  // 4d) Health-support needs (nurse, stress, legal, passport, interpreter…)
+  // → what the 24/7 line does + a one-tap "Call 1800 887 283" button.
+  const service = matchSupportService(text);
+  if (service) {
+    await sendSupportService(db, contact, service, lang);
     return;
   }
   // 5) LLM classification + grounded answer.

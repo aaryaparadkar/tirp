@@ -50,7 +50,7 @@ export function welcomeMessage(name: string | null, lang: SupportedLanguage, opt
     `• 24/7 Student Health and Support Line: *1800 887 283*\n` +
     `• Emergency? Call *000* straight away\n\n` +
     (optedIn
-      ? `Your first OSHC quiz is ready to go. Earn XP and redeem a *free health checkup*. Tap below to get stuck in!`
+      ? `Your first OSHC quiz is ready to go. Earn XP and redeem a *free health checkup*. You can take the quiz whenever you are ready. Cheers!`
       : `Reckon you're ready for the OSHC quiz? Quick questions, and the XP you earn gets you a *free health checkup*. Tap below to opt in!`)
   );
 }

@@ -18,6 +18,9 @@ vi.mock('../src/kapso.js', () => ({
   sendEmergencyNumber: vi.fn(async (_p: string, _to: string, body: string, opts: { callUrl?: string; buttonText?: string }) => {
     sent.push({ kind: 'call-button', body, url: opts.callUrl ?? undefined, label: opts.buttonText });
   }),
+  sendCallCta: vi.fn(async (_p: string, _to: string, body: string, label: string, url: string) => {
+    sent.push({ kind: 'call-button', body, url, label });
+  }),
 }));
 vi.mock('../src/conversation.js', () => ({
   saveTurn: vi.fn(async () => undefined),
@@ -369,6 +372,26 @@ describe('emergency button', () => {
   it('cover questions about ambulances are not emergencies', async () => {
     await say(memoryDb(), 'Is an ambulance covered?');
     expect(sent.find((m) => m.kind === 'call-button')).toBeUndefined();
+  });
+});
+
+describe('health support line (nurse, counselling, legal…)', () => {
+  it.each([
+    ['I have a fever and a headache', 'registered nurse'],
+    ["I'm really stressed and can't sleep", 'counselling'],
+    ['my landlord kept my bond', 'legal advice'],
+  ])('%s → explains the service + Call 1800 887 283 button', async (text, phrase) => {
+    await say(memoryDb(), text);
+    const button = sent.find((m) => m.kind === 'call-button');
+    expect(button?.label).toBe('Call 1800 887 283');
+    expect(button?.url).toBe('https://oshc.example.com/call/1800887283?lang=en');
+    expect(button?.body.toLowerCase()).toContain(phrase);
+    expect(button?.body).toContain('1800 887 283');
+  });
+
+  it('chest symptoms still get Call 000, not the support line', async () => {
+    await say(memoryDb(), "I feel sick and my chest feels tight");
+    expect(sent.find((m) => m.kind === 'call-button')?.label).toBe('Call 000');
   });
 });
 

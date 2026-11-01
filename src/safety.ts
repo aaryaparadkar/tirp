@@ -1,5 +1,6 @@
 import { EMERGENCY_NUMBER_AU } from './config.js';
 import type { SupportedLanguage } from './types.js';
+import { assessSymptoms } from './symptoms.js';
 
 const HIGH_RISK_PATTERNS: RegExp[] = [
   /\bcall\s+(an?\s+)?ambulance\b/i,
@@ -90,6 +91,8 @@ export function isEmergency(text: string): boolean {
   if (ZH_HIGH_RISK.some((w) => normalized.includes(w))) return true;
   if (CRITICAL_PATTERNS.some((re) => re.test(normalized))) return true;
   if (!INSURANCE_QUESTION.test(normalized) && SOFT_EMERGENCY_PATTERNS.some((re) => re.test(normalized))) return true;
+  // Everyday descriptions of red-flag symptoms ("not feeling good in my chest").
+  if (!INSURANCE_QUESTION.test(normalized) && assessSymptoms(normalized).urgent) return true;
   if (
     (NON_EMERGENCY_GUARD.test(normalized) || NON_EMERGENCY_GUARD_ES.test(normalized) || NON_EMERGENCY_GUARD_ZH.test(normalized)) &&
     !/\b(breath|unconscious|bleed|chest|accident|ambulance|000|respirar|inconsciente|sangrado|pecho|accidente|ambulancia|呼吸|意识|出血|胸|事故|救护)\b/i.test(normalized)
